@@ -30,6 +30,9 @@ export function getMongoUriOrThrow(): string {
     }
     return uri;
   }
+  const standard = process.env.MONGODB_URI_STANDARD?.trim();
+  if (standard) return standard;
+
   const uri = process.env.MONGODB_URI;
   if (!uri) {
     throw new Error("Production mode: MONGODB_URI is required");

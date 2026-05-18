@@ -4,8 +4,25 @@
  */
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
+import { readFileSync, existsSync } from "fs";
+import { resolve } from "path";
 
-const uri = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/reglow";
+function loadEnvLocal() {
+  const path = resolve(process.cwd(), ".env.local");
+  if (!existsSync(path)) return;
+  for (const line of readFileSync(path, "utf8").split(/\r?\n/)) {
+    const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/);
+    if (!m || line.trimStart().startsWith("#")) continue;
+    if (!process.env[m[1]]) process.env[m[1]] = m[2].trim();
+  }
+}
+
+loadEnvLocal();
+
+const uri =
+  process.env.MONGODB_URI_STANDARD ||
+  process.env.MONGODB_URI ||
+  "mongodb://127.0.0.1:27017/reglow";
 
 const userSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true, lowercase: true },
@@ -33,7 +50,7 @@ const users = [
   },
 ];
 
-await mongoose.connect(uri);
+await mongoose.connect(uri, { serverSelectionTimeoutMS: 15000, family: 4 });
 
 for (const u of users) {
   const hash = await bcrypt.hash(u.password, 10);

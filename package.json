@@ -18,7 +18,8 @@
     "seed:users": "node scripts/ensure-demo-users.mjs",
     "deploy:verify": "node scripts/deploy-verify.mjs",
     "deploy:verify:prod": "node scripts/deploy-verify.mjs https://reglow.onrender.com",
-    "render:sync-env": "node scripts/sync-render-env.mjs"
+    "render:sync-env": "node scripts/sync-render-env.mjs",
+    "mongo:fix-dns": "node scripts/fix-mongo-dns.mjs"
   },
   "dependencies": {
     "@types/node": "^25.8.0",

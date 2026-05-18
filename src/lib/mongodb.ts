@@ -37,7 +37,9 @@ export async function connectDB(): Promise<typeof mongoose> {
     cached.promise = mongoose.connect(uri, {
       bufferCommands: false,
       maxPoolSize: 10,
-      serverSelectionTimeoutMS: 8000,
+      serverSelectionTimeoutMS: 15000,
+      // Prefer IPv4 — avoids querySrv ECONNREFUSED on some Windows networks
+      family: 4,
     });
   }
 
