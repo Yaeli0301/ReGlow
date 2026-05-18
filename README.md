@@ -1,94 +1,227 @@
-# ReGlow — מערכת הפעלה לסלוני קוסמטיקה
+# ReGlow — SaaS Operating System for Beauty Businesses
 
-פלטפורמת SaaS לניהול עסק מלא: תורים חכמים, שימור לקוחות, ביטולים, תשלומים, חשבוניות ואנליטיקה.
+A full production-ready SaaS platform for cosmetologists:
+appointments, clients, retention automation, payments, invoices, analytics.
 
-## Tech stack
+**Live app:** [https://reglow.onrender.com](https://reglow.onrender.com)  
+**Repo:** [https://github.com/Yaeli0301/ReGlow](https://github.com/Yaeli0301/ReGlow)
 
-- **Next.js 15** (App Router) + TypeScript
-- **MongoDB** + Mongoose
-- **Tailwind CSS** — RTL / עברית
-- **Stripe** — מנויים
-- **JWT** — אימות (`reglow_token` cookie)
+---
 
-## הרצה מקומית
+## 🧠 CORE ARCHITECTURE
+
+Multi-tenant SaaS system:
+
+- Each business = isolated data space (`userId` on every document; public routes use `businessId` = owner `User._id`)
+- Each user belongs to exactly one business
+- No cross-business data access allowed
+
+---
+
+## 🧰 TECH STACK
+
+- Next.js 15 (App Router) + TypeScript
+- MongoDB + Mongoose
+- Tailwind CSS (RTL support)
+- JWT authentication (cookie: `reglow_token`)
+- Stripe subscriptions
+- Cron jobs (Vercel `vercel.json`; see [docs/RENDER-ATLAS.md](docs/RENDER-ATLAS.md) for Render)
+
+---
+
+## 🔐 ROLES
+
+### USER (Business Owner)
+
+- manages clients
+- manages appointments
+- views analytics
+- configures pricing & availability
+
+### ADMIN (Platform Owner)
+
+- views all businesses
+- manages users
+- system-wide analytics
+- feedback moderation
+
+---
+
+## 🚀 ENVIRONMENTS
+
+### ENV_MODE
+
+| Mode | Description |
+|------|-------------|
+| `production` | real DB, Stripe, persistent data |
+| `demo` | seeded demo data, resettable state |
+
+⚠️ Demo must use a **separate database** (`MONGODB_URI_DEMO`). Never share with production.
+
+Local-only fallback: if `ENV_MODE=demo` and no URI is set, in-memory Mongo is used for dev without installing MongoDB.
+
+---
+
+## 🧪 DEMO SYSTEM
+
+- Auto-seed data on first run (demo mode)
+- Demo user login: `demo@reglow.local` / `Demo1234!`
+- Admin demo: `admin@reglow.local` / `Demo1234!`
+- Reset endpoint: `POST /api/demo/reset`
+
+```bash
+npm run seed:users   # create demo users in Atlas/local Mongo
+```
+
+---
+
+## 📅 CORE MODULES
+
+### 1. Smart Scheduling
+
+- prevents overlapping appointments
+- uses service duration
+- respects availability rules
+
+Files: `src/lib/scheduling.ts`
+
+### 2. Retention Engine
+
+- finds clients inactive 30–45 days
+- sends automated reactivation messages
+- fallback messaging if no response
+
+Runs via cron.
+
+### 3. Cancellation System
+
+- cancel appointment
+- cancel full day
+- reschedule flow with token
+
+### 4. Payments & Invoices
+
+- cash / card / Bit (manual confirmation)
+- auto invoice generation
+- monthly export (PDF/ZIP)
+
+### 5. Analytics Dashboard
+
+- revenue
+- active clients
+- churn rate
+- returning clients revenue (key metric)
+
+### 6. Feedback System
+
+- user suggestions
+- admin moderation panel
+
+### 7. Pricing Plans
+
+- **Basic:** clients + dashboard
+- **Pro:** scheduling + automation
+- **Premium:** booking page + full system
+
+---
+
+## 🧍 CLIENT FLOW
+
+- Public booking: `/book/[businessId]`
+- Reschedule: `/reschedule/[token]`
+
+---
+
+## 🧩 DATA ISOLATION RULE (CRITICAL)
+
+Every query MUST include `userId` (business owner id).
+
+No global queries allowed.
+
+---
+
+## ⏰ CRON JOBS (Vercel)
+
+- `/api/cron/retention` → hourly
+- `/api/cron/reactivation` → daily
+
+Requires: `Authorization: Bearer CRON_SECRET`
+
+---
+
+## 🔐 SECURITY
+
+- bcrypt password hashing
+- JWT authentication
+- protected API routes
+- role-based access control
+- strict tenant isolation
+
+---
+
+## 📦 IMPORTANT RULES
+
+- NEVER mix demo and production data
+- NEVER allow cross-business access
+- NEVER send real WhatsApp messages (only `wa.me` links)
+- ALWAYS validate appointment duration + overlap
+
+---
+
+## 🎯 PRODUCT GOAL
+
+ReGlow must behave like a real SaaS business OS:
+fast, stable, scalable, and ready for paying customers.
+
+---
+
+## Local development
 
 ```bash
 npm install
-cp .env.example .env.local   # מלאי MONGODB_URI, JWT_SECRET, Stripe וכו'
-npm run dev:clean              # מומלץ אחרי שגיאות .next
+cp .env.example .env.local   # fill MONGODB_URI, JWT_SECRET, etc.
+npm run dev:clean
 ```
 
-פתחי `http://localhost:3000`
+Open [http://localhost:3000](http://localhost:3000)
 
 ```bash
 npm run build
-npm test                 # unit + integration (Vitest)
-npm run test:unit
-npm run test:integration
+npm test
 npm run test:smoke
 ```
 
-## Environment modes
-
-| `ENV_MODE` | Behavior |
-|------------|----------|
-| `production` | Real `MONGODB_URI`, Stripe, persistent data |
-| `demo` | Demo banner, auto-seed, reset API; local: in-memory Mongo if no URI |
+### Health check
 
 ```bash
-# Local demo (no Mongo install needed)
-ENV_MODE=demo npm run dev
-
-# Demo with dedicated DB
-ENV_MODE=demo MONGODB_URI_DEMO=mongodb://... npm run dev
-
-# Reset demo data
-curl -X POST http://localhost:3000/api/demo/reset
+curl http://localhost:3000/api/health
 ```
 
-**Demo login:** `demo@reglow.local` / `Demo1234!`
+---
 
-Never point `MONGODB_URI` and `MONGODB_URI_DEMO` at the same production database.
+## Deploy: Render + MongoDB Atlas
 
-## מודולים עיקריים
+Full checklist: **[docs/RENDER-ATLAS.md](docs/RENDER-ATLAS.md)**
 
-| מודול | תיאור |
-|--------|--------|
-| **Smart scheduling** | `src/lib/scheduling.ts`, `availability.ts` — מניעת חפיפות לפי משך שירות |
-| **Retention engine** | `src/lib/retention-engine.ts` — הודעות 30–45 יום + fallback אוטומטי (cron) |
-| **Cancel / reschedule** | `POST /api/appointments/[id]/cancel`, `/api/reschedule/[token]` |
-| **Payments & invoices** | מזומן, כרטיס, Bit, PayPal; ייצוא PDF/ZIP חודשי |
-| **Analytics** | `GET /api/dashboard/stats` — הכנסה מלקוחות חוזרות, churn, פעילים |
-| **Feedback** | `/feedback`, `/admin/feedback` (role: `admin`) |
-| **RBAC** | `business` / `admin` — בידוד נתונים לפי `userId` |
+1. Atlas: connection string with database name `reglow`, network access `0.0.0.0/0`.
+2. Render → **Environment** → set `MONGODB_URI`, `JWT_SECRET`, `NEXT_PUBLIC_APP_URL=https://reglow.onrender.com`, `ENV_MODE=production`.
+3. Redeploy → verify [https://reglow.onrender.com/api/health](https://reglow.onrender.com/api/health) shows `"database":"ok"`.
+4. Run `npm run seed:users` locally (with production `MONGODB_URI` in env) to create demo logins in Atlas.
 
-## Cron (Vercel)
+Optional: connect this repo to Render using `render.yaml` (Blueprint).
 
-`vercel.json`:
+---
 
-- `0 8 * * *` → `/api/cron/reactivate`
-- `0 * * * *` → `/api/cron/retention`
+## Environment variables
 
-דרוש header: `Authorization: Bearer $CRON_SECRET`
+See `.env.example`. Never commit `.env.local`.
 
-## משתנה סביבה חשובים
-
-- `MONGODB_URI`, `JWT_SECRET`
-- `CRON_SECRET`
-- `STRIPE_*`, `NEXT_PUBLIC_APP_URL`
-- WhatsApp: כרגע קישורי `wa.me` (לא API רשמי)
-
-## הגדרת אדמין
-
-ב-MongoDB: `db.users.updateOne({ email: "..." }, { $set: { role: "admin" } })`
-
-## מנויים
-
-- **Basic** — לקוחות + דשבורד
-- **Pro** — יומן, אוטומציה, לקוחות אבודים
-- **Premium** — דף הזמנה `/book/[businessId]`
-
-## קישורים ללקוחות
-
-- הזמנה: `/book/{businessId}`
-- שינוי מועד (אחרי ביטול): `/reschedule/{rescheduleToken}`
+| Variable | Purpose |
+|----------|---------|
+| `MONGODB_URI` | Production database |
+| `MONGODB_URI_DEMO` | Demo-only database |
+| `JWT_SECRET` | Auth (min 32 chars) |
+| `ENV_MODE` | `production` \| `demo` |
+| `NEXT_PUBLIC_APP_URL` | Public site URL |
+| `CRON_SECRET` | Cron authorization |
+| `STRIPE_*` | Billing |

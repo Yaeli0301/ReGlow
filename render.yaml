@@ -1,0 +1,39 @@
+# Render Blueprint — https://reglow.onrender.com
+# Set secret env vars in Render Dashboard → Environment (never commit real values).
+
+services:
+  - type: web
+    name: reglow
+    runtime: node
+    plan: free
+    region: frankfurt
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: ENV_MODE
+        value: production
+      - key: NEXT_PUBLIC_APP_URL
+        value: https://reglow.onrender.com
+      - key: MONGODB_URI
+        sync: false
+      - key: MONGODB_URI_DEMO
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CRON_SECRET
+        generateValue: true
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+        sync: false
+      - key: STRIPE_PRICE_BASIC
+        sync: false
+      - key: STRIPE_PRICE_PRO
+        sync: false
+      - key: STRIPE_PRICE_PREMIUM
+        sync: false

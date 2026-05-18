@@ -9,8 +9,9 @@ export function isDemoMode(): boolean {
   return getEnvMode() === "demo";
 }
 
-/** In-memory Mongo only when demo + no URI (local dev). */
+/** In-memory Mongo only for local demo when no URI is configured (not used on Render/production). */
 export function shouldUseInMemoryMongo(): boolean {
+  if (process.env.RENDER || process.env.NODE_ENV === "production") return false;
   return isDemoMode() && !process.env.MONGODB_URI_DEMO && !process.env.MONGODB_URI;
 }
 
