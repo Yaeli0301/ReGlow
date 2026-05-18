@@ -24,7 +24,10 @@ export function getMongoUriOrThrow(): string {
     return uri;
   }
   if (isDemoMode()) {
-    const uri = process.env.MONGODB_URI_DEMO || process.env.MONGODB_URI;
+    const uri =
+      process.env.MONGODB_URI_DEMO ||
+      process.env.MONGODB_URI_STANDARD ||
+      process.env.MONGODB_URI;
     if (!uri) {
       throw new Error("Demo mode: set MONGODB_URI_DEMO or MONGODB_URI");
     }

@@ -3,7 +3,8 @@
 A full production-ready SaaS platform for cosmetologists:
 appointments, clients, retention automation, payments, invoices, analytics.
 
-**Live app:** [https://reglow.onrender.com](https://reglow.onrender.com)  
+**Live app (Vercel):** [https://re-glow.vercel.app](https://re-glow.vercel.app)  
+**Alternate (Render):** [https://reglow.onrender.com](https://reglow.onrender.com)  
 **Repo:** [https://github.com/Yaeli0301/ReGlow](https://github.com/Yaeli0301/ReGlow)
 
 ---
@@ -199,7 +200,15 @@ curl http://localhost:3000/api/health
 
 ---
 
-## Deploy: Render + MongoDB Atlas
+## Deploy: Vercel + MongoDB Atlas (recommended)
+
+Full checklist: **[docs/VERCEL-SETUP.md](docs/VERCEL-SETUP.md)**
+
+1. Atlas: `0.0.0.0/0` in Network Access + connection string with `/reglow`
+2. Vercel → Environment → `MONGODB_URI`, `JWT_SECRET`, `NEXT_PUBLIC_APP_URL=https://re-glow.vercel.app`
+3. Redeploy → [https://re-glow.vercel.app/api/health](https://re-glow.vercel.app/api/health) → `"database":"ok"`
+
+## Deploy: Render (optional)
 
 Full checklist: **[docs/RENDER-ATLAS.md](docs/RENDER-ATLAS.md)**
 
