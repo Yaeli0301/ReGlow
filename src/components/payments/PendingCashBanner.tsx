@@ -19,8 +19,17 @@ export function PendingCashBanner() {
 
   function load() {
     fetch("/api/payments/pending")
-      .then((r) => r.json())
-      .then((d) => setPayments(d.payments || []));
+      .then(async (r) => {
+        if (!r.ok) return { payments: [] };
+        const text = await r.text();
+        try {
+          return JSON.parse(text) as { payments?: PendingPayment[] };
+        } catch {
+          return { payments: [] };
+        }
+      })
+      .then((d) => setPayments(d.payments || []))
+      .catch(() => setPayments([]));
   }
 
   useEffect(() => {

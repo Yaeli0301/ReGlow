@@ -4,13 +4,18 @@ export type ApiResult<T> =
   | { ok: true; data: T }
   | { ok: false; status: number; error?: string; code?: string };
 
-export async function parseJsonResponse<T>(res: Response): Promise<ApiResult<T>> {
-  let body: Record<string, unknown> = {};
+async function readJsonBody(res: Response): Promise<Record<string, unknown>> {
+  const text = await res.text();
+  if (!text) return {};
   try {
-    body = (await res.json()) as Record<string, unknown>;
+    return JSON.parse(text) as Record<string, unknown>;
   } catch {
-    /* non-JSON body */
+    return {};
   }
+}
+
+export async function parseJsonResponse<T>(res: Response): Promise<ApiResult<T>> {
+  const body = await readJsonBody(res);
 
   if (res.status === 403) {
     return {

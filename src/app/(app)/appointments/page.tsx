@@ -105,8 +105,22 @@ export default function AppointmentsPage() {
         if (!apptRes.ok) {
           throw new Error("appointments failed");
         }
-        const apptData = await apptRes.json();
-        const clientData = clientRes.ok ? await clientRes.json() : { clients: [] };
+        const apptText = await apptRes.text();
+        const clientText = clientRes.ok ? await clientRes.text() : "";
+        let apptData: { appointments?: Appointment[] } = {};
+        let clientData: { clients?: Client[] } = { clients: [] };
+        try {
+          apptData = apptText ? (JSON.parse(apptText) as { appointments?: Appointment[] }) : {};
+        } catch {
+          throw new Error("appointments invalid response");
+        }
+        try {
+          clientData = clientText
+            ? (JSON.parse(clientText) as { clients?: Client[] })
+            : { clients: [] };
+        } catch {
+          clientData = { clients: [] };
+        }
         setAppointments(apptData.appointments || []);
         setClients(clientData.clients || []);
       })
