@@ -11,6 +11,11 @@ const protectedPaths = [
   "/billing",
   "/schedule",
   "/settings",
+  "/pricing",
+  "/invoices",
+  "/feedback",
+  "/admin",
+  "/admin/debug",
 ];
 
 const authPaths = ["/login", "/register"];
@@ -42,6 +47,10 @@ export const config = {
     "/billing/:path*",
     "/schedule/:path*",
     "/settings/:path*",
+    "/pricing/:path*",
+    "/invoices/:path*",
+    "/feedback/:path*",
+    "/admin/:path*",
     "/login",
     "/register",
   ],

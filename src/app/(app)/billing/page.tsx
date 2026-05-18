@@ -1,51 +1,79 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/Button";
-import { PLANS } from "@/types";
 import type { SessionUser, SubscriptionTier } from "@/types";
 import { ServicesManager } from "@/components/billing/ServicesManager";
 import { ReferralPanel } from "@/components/referral/ReferralPanel";
+import { useLanguage, useT } from "@/contexts/LanguageContext";
+import { getTranslatedPlans, tierLabel } from "@/i18n/plans";
 
 export default function BillingPage() {
   const searchParams = useSearchParams();
+  const t = useT();
+  const { locale } = useLanguage();
+  const plans = useMemo(() => getTranslatedPlans(locale), [locale]);
+
   const [user, setUser] = useState<SessionUser | null>(null);
   const [rewardMonths, setRewardMonths] = useState(0);
   const [useReferralReward, setUseReferralReward] = useState(false);
   const [loading, setLoading] = useState<string | null>(null);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [stripeConfigured, setStripeConfigured] = useState<boolean | null>(null);
 
   const success = searchParams.get("success");
   const canceled = searchParams.get("canceled");
 
   useEffect(() => {
-    fetch("/api/auth/me")
-      .then((res) => res.json())
-      .then((data) => setUser(data.user));
-    fetch("/api/referral")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.rewardMonthsAvailable) {
-          setRewardMonths(data.rewardMonthsAvailable);
+    Promise.all([
+      fetch("/api/auth/me"),
+      fetch("/api/referral"),
+      fetch("/api/stripe/config"),
+    ])
+      .then(async ([meRes, refRes, stripeRes]) => {
+        const meData = await meRes.json();
+        const refData = await refRes.json();
+        const stripeData = await stripeRes.json();
+        setUser(meData.user);
+        setStripeConfigured(stripeData.configured === true);
+        if (refData.rewardMonthsAvailable) {
+          setRewardMonths(refData.rewardMonthsAvailable);
         }
-      });
+      })
+      .catch(() => {});
   }, [success]);
 
   async function handleCheckout(tier: Exclude<SubscriptionTier, "none">) {
+    setCheckoutError(null);
     setLoading(tier);
-    const res = await fetch("/api/stripe/checkout", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        tier,
-        ...(useReferralReward && rewardMonths > 0 ? { useReferralReward: true } : {}),
-      }),
-    });
-    const data = await res.json();
-    setLoading(null);
 
-    if (data.url) {
-      window.location.href = data.url;
+    try {
+      const res = await fetch("/api/stripe/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tier,
+          ...(useReferralReward && rewardMonths > 0 ? { useReferralReward: true } : {}),
+        }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setCheckoutError(data.error || t("billing.checkoutFailed"));
+        return;
+      }
+
+      if (data.url) {
+        window.location.assign(data.url);
+        return;
+      }
+
+      setCheckoutError(t("billing.checkoutFailed"));
+    } catch {
+      setCheckoutError(t("billing.checkoutFailed"));
+    } finally {
+      setLoading(null);
     }
   }
 
@@ -61,22 +89,34 @@ export default function BillingPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold">Billing</h1>
+      <h1 className="text-2xl font-bold">{t("billing.title")}</h1>
       <p className="mt-1 text-gray-500">
-        Current plan:{" "}
-        <span className="font-semibold capitalize text-brand-600">
-          {currentTier === "none" ? "No active plan" : currentTier}
+        {t("billing.currentPlan")}:{" "}
+        <span className="font-semibold text-brand-600">
+          {currentTier === "none" ? t("billing.noPlan") : tierLabel(locale, currentTier)}
         </span>
       </p>
 
       {success && (
         <div className="mt-4 rounded-xl bg-emerald-50 p-4 text-sm text-emerald-700">
-          Payment successful! Your subscription is now active.
+          {t("billing.paymentSuccess")}
         </div>
       )}
       {canceled && (
         <div className="mt-4 rounded-xl bg-amber-50 p-4 text-sm text-amber-700">
-          Checkout canceled. You can try again anytime.
+          {t("billing.paymentCanceled")}
+        </div>
+      )}
+
+      {stripeConfigured === false && (
+        <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+          {t("billing.stripeNotConfigured")}
+        </div>
+      )}
+
+      {checkoutError && (
+        <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          {checkoutError}
         </div>
       )}
 
@@ -89,13 +129,13 @@ export default function BillingPage() {
             className="h-4 w-4 rounded border-gray-300 text-brand-600"
           />
           <span className="text-sm text-emerald-900">
-            השתמשי בחודש חינם מהפניות ({rewardMonths} זמינים)
+            {t("billing.useFreeMonth")} ({rewardMonths} {t("billing.available")})
           </span>
         </label>
       )}
 
       <div className="mt-8 grid gap-6 md:grid-cols-3">
-        {PLANS.map((plan) => {
+        {plans.map((plan) => {
           const isCurrent = currentTier === plan.id;
           const isPopular = plan.popular;
 
@@ -108,7 +148,7 @@ export default function BillingPage() {
             >
               {plan.tag && (
                 <span
-                  className={`absolute -top-3 left-1/2 -translate-x-1/2 rounded-full px-3 py-0.5 text-xs font-bold text-white ${
+                  className={`absolute -top-3 start-1/2 -translate-x-1/2 rounded-full px-3 py-0.5 text-xs font-bold text-white ${
                     isPopular ? "bg-brand-500" : "bg-accent-500"
                   }`}
                 >
@@ -118,8 +158,9 @@ export default function BillingPage() {
 
               <h3 className="text-lg font-bold">{plan.name}</h3>
               <p className="mt-2 text-3xl font-bold text-brand-600">
-                ₪{plan.price}
-                <span className="text-sm font-normal text-gray-500">/mo</span>
+                {t("common.currency")}
+                {plan.price}
+                <span className="text-sm font-normal text-gray-500">{t("common.perMonth")}</span>
               </p>
               <p className="mt-2 flex-1 text-sm text-gray-600">{plan.description}</p>
 
@@ -130,7 +171,7 @@ export default function BillingPage() {
                 disabled={isCurrent}
                 onClick={() => handleCheckout(plan.id)}
               >
-                {isCurrent ? "Current plan" : `Choose ${plan.name}`}
+                {isCurrent ? t("billing.currentPlanBtn") : `${t("billing.choosePlan")} ${plan.name}`}
               </Button>
             </div>
           );
@@ -140,7 +181,7 @@ export default function BillingPage() {
       {currentTier !== "none" && (
         <div className="mt-8">
           <Button variant="secondary" loading={loading === "portal"} onClick={handlePortal}>
-            Manage subscription
+            {t("billing.manageSubscription")}
           </Button>
         </div>
       )}
@@ -148,8 +189,8 @@ export default function BillingPage() {
       {currentTier === "premium" && user && (
         <>
           <div className="card mt-8">
-            <h3 className="font-semibold">Your booking page</h3>
-            <p className="mt-2 text-sm text-gray-600">Share this link with clients:</p>
+            <h3 className="font-semibold">{t("billing.bookingPage")}</h3>
+            <p className="mt-2 text-sm text-gray-600">{t("billing.shareBooking")}</p>
             <code className="mt-2 block break-all rounded-lg bg-brand-50 p-3 text-sm text-brand-700">
               {typeof window !== "undefined"
                 ? `${window.location.origin}/book/${user.id}`

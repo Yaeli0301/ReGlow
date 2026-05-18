@@ -3,6 +3,7 @@ import { startOfDay } from "date-fns";
 import { connectDB } from "@/lib/mongodb";
 import { User } from "@/models/User";
 import { getAvailableSlots } from "@/lib/availability";
+import { resolveServiceDuration } from "@/lib/service-duration";
 import { canAccess } from "@/lib/subscription";
 
 export async function GET(request: Request) {
@@ -22,7 +23,13 @@ export async function GET(request: Request) {
   }
 
   const date = startOfDay(new Date(dateStr));
-  const slots = await getAvailableSlots(businessId, date);
+  const serviceId = searchParams.get("serviceId");
+  const duration = serviceId
+    ? await resolveServiceDuration(businessId, serviceId)
+    : undefined;
+  const slots = await getAvailableSlots(businessId, date, {
+    slotDurationMinutes: duration,
+  });
 
   return NextResponse.json({
     slots: slots.map((s) => ({

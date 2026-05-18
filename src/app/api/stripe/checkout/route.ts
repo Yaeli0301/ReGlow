@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { connectDB } from "@/lib/mongodb";
 import { requireAuthFromRequest } from "@/lib/api-auth";
 import { createCheckoutSession, getStripe } from "@/lib/stripe";
+import { getStripeConfigError, isStripeConfigured, validateTierPrice } from "@/lib/stripe-config";
 import { User } from "@/models/User";
 import type { SubscriptionTier } from "@/types";
 
@@ -15,6 +17,15 @@ export async function POST(request: Request) {
   if (auth instanceof NextResponse) return auth;
 
   try {
+    if (!isStripeConfigured()) {
+      return NextResponse.json(
+        { error: getStripeConfigError("he"), code: "STRIPE_NOT_CONFIGURED" },
+        { status: 503 }
+      );
+    }
+
+    await connectDB();
+
     const body = await request.json();
     const parsed = schema.safeParse(body);
 
@@ -23,6 +34,13 @@ export async function POST(request: Request) {
     }
 
     const tier = parsed.data.tier as Exclude<SubscriptionTier, "none">;
+    const priceError = validateTierPrice(tier);
+    if (priceError) {
+      return NextResponse.json(
+        { error: getStripeConfigError("he"), code: "STRIPE_PRICE_INVALID" },
+        { status: 503 }
+      );
+    }
     const { dbUser } = auth;
 
     let useReferralReward = false;
@@ -55,6 +73,10 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error("Checkout error:", error);
-    return NextResponse.json({ error: "Failed to create checkout session" }, { status: 500 });
+    const message =
+      error instanceof Error && error.message.includes("No such price")
+        ? "מזהה מחיר Stripe לא תקין — בדקי את STRIPE_PRICE_* ב-.env.local"
+        : "יצירת תשלום נכשלה. נסי שוב או פני לתמיכה.";
+    return NextResponse.json({ error: message, code: "CHECKOUT_FAILED" }, { status: 500 });
   }
 }

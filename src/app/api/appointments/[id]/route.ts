@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { connectDB } from "@/lib/mongodb";
 import { requireAuthFromRequest } from "@/lib/api-auth";
 import { canAccess } from "@/lib/subscription";
 import { Appointment } from "@/models/Appointment";
 import { Client } from "@/models/Client";
 import { computeClientStatus } from "@/lib/client-status";
+import { assertSlotAvailable, SchedulingConflictError } from "@/lib/scheduling";
+import { resolveServiceDuration } from "@/lib/service-duration";
+import { resetClientRetention } from "@/lib/retention-engine";
 
 const updateSchema = z.object({
   date: z.string().optional(),
@@ -26,6 +30,8 @@ export async function PUT(
 
   const { id } = await params;
 
+  await connectDB();
+
   try {
     const body = await request.json();
     const parsed = updateSchema.safeParse(body);
@@ -39,7 +45,24 @@ export async function PUT(
       return NextResponse.json({ error: "Appointment not found" }, { status: 404 });
     }
 
-    if (parsed.data.date) appointment.date = new Date(parsed.data.date);
+    if (parsed.data.date) {
+      const newDate = new Date(parsed.data.date);
+      const duration =
+        appointment.durationMinutes ||
+        (await resolveServiceDuration(
+          auth.user.id,
+          appointment.serviceId?.toString()
+        ));
+      try {
+        await assertSlotAvailable(auth.user.id, newDate, duration, appointment._id.toString());
+      } catch (e) {
+        if (e instanceof SchedulingConflictError) {
+          return NextResponse.json({ error: e.message }, { status: 409 });
+        }
+        throw e;
+      }
+      appointment.date = newDate;
+    }
     if (parsed.data.status) appointment.status = parsed.data.status;
     if (parsed.data.serviceName !== undefined) appointment.serviceName = parsed.data.serviceName;
     if (parsed.data.notes !== undefined) appointment.notes = parsed.data.notes;
@@ -52,6 +75,7 @@ export async function PUT(
         client.lastVisitDate = appointment.date;
         client.status = computeClientStatus(client.lastVisitDate);
         await client.save();
+        await resetClientRetention(client._id.toString());
       }
     }
 
@@ -74,6 +98,8 @@ export async function DELETE(
   }
 
   const { id } = await params;
+
+  await connectDB();
 
   const result = await Appointment.findOneAndDelete({ _id: id, userId: auth.user.id });
 

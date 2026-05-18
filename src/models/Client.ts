@@ -13,6 +13,8 @@ export interface IClient extends Document {
   status: ClientStatus;
   optIn: boolean;
   lastMessageSentDate?: Date;
+  retentionStep: number;
+  retentionStepAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -32,6 +34,8 @@ const ClientSchema = new Schema<IClient>(
     },
     optIn: { type: Boolean, default: false },
     lastMessageSentDate: { type: Date },
+    retentionStep: { type: Number, default: 0 },
+    retentionStepAt: { type: Date },
   },
   { timestamps: true }
 );

@@ -1,18 +1,27 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Heebo } from "next/font/google";
 import "./globals.css";
+import { AppProviders } from "@/components/providers/AppProviders";
 
-const inter = Inter({ subsets: ["latin"] });
+const heebo = Heebo({
+  subsets: ["hebrew", "latin"],
+  variable: "--font-heebo",
+  display: "swap",
+  weight: ["400", "500", "600", "700"],
+  preload: true,
+});
 
 export const metadata: Metadata = {
-  title: "ReGlow — Salon Client Management",
-  description: "Help cosmetologists manage clients, reduce no-shows, and grow revenue.",
+  title: "ReGlow — ניהול סלון לקוסמטיקאיות",
+  description: "פלטפורמה לניהול לקוחות, תורים והחזרת לקוחות אבודות לסלונים.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body className={inter.className}>{children}</body>
+    <html lang="he" dir="rtl" suppressHydrationWarning>
+      <body className={`${heebo.variable} font-sans antialiased`}>
+        <AppProviders>{children}</AppProviders>
+      </body>
     </html>
   );
 }

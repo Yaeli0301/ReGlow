@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import { getSession, getTokenFromHeader, verifyToken } from "@/lib/auth";
 import { User, type IUser } from "@/models/User";
-import type { SessionUser } from "@/types";
+import type { SessionUser, UserRole } from "@/types";
 import { hasActiveSubscription } from "@/lib/subscription";
 
 type AuthResult = { user: SessionUser; dbUser: IUser } | NextResponse;
@@ -25,6 +25,7 @@ export async function requireAuth(): Promise<AuthResult> {
     id: dbUser._id.toString(),
     email: dbUser.email,
     businessName: dbUser.businessName,
+    role: dbUser.role || "business",
     subscriptionTier: dbUser.subscriptionTier,
   };
 
@@ -58,10 +59,18 @@ export async function requireAuthFromRequest(request: Request): Promise<AuthResu
     id: dbUser._id.toString(),
     email: dbUser.email,
     businessName: dbUser.businessName,
+    role: dbUser.role || "business",
     subscriptionTier: dbUser.subscriptionTier,
   };
 
   return { user, dbUser };
+}
+
+export function requireRole(user: SessionUser, role: UserRole): NextResponse | null {
+  if (user.role !== role) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+  return null;
 }
 
 export function requireSubscription(user: SessionUser): NextResponse | null {

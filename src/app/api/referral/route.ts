@@ -3,7 +3,7 @@ import { connectDB } from "@/lib/mongodb";
 import { requireAuthFromRequest } from "@/lib/api-auth";
 import { User } from "@/models/User";
 import { Referral } from "@/models/Referral";
-import { generateReferralCode, buildReferralLink, buildReferralShareMessage } from "@/lib/referral";
+import { generateReferralCode, buildReferralLink } from "@/lib/referral";
 
 export async function GET(request: Request) {
   const auth = await requireAuthFromRequest(request);
@@ -48,10 +48,9 @@ export async function GET(request: Request) {
 
   const referralLink = buildReferralLink(user.referralCode);
 
-  return NextResponse.json({
+  const response = NextResponse.json({
     referralCode: user.referralCode,
     referralLink,
-    shareMessage: buildReferralShareMessage(referralLink),
     rewardMonthsAvailable: user.referralRewardMonths ?? 0,
     stats: {
       invited,
@@ -76,4 +75,7 @@ export async function GET(request: Request) {
       };
     }),
   });
+
+  response.headers.set("Cache-Control", "private, max-age=30, stale-while-revalidate=60");
+  return response;
 }

@@ -6,7 +6,10 @@ import { Button } from "@/components/ui/Button";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { OptInBadge } from "@/components/clients/OptInBadge";
 import { WhatsAppButton } from "@/components/clients/WhatsAppButton";
+import { SubscriptionGate } from "@/components/billing/SubscriptionGate";
 import { WHATSAPP_TEMPLATES } from "@/lib/whatsapp";
+import { useHasSubscription } from "@/contexts/AppUserContext";
+import { useT } from "@/contexts/LanguageContext";
 import type { ClientStatus } from "@/types";
 
 interface Client {
@@ -21,17 +24,30 @@ interface Client {
 }
 
 export default function ClientsPage() {
+  const t = useT();
+  const hasSubscription = useHasSubscription();
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [needsSubscription, setNeedsSubscription] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ name: "", phone: "", notes: "" });
   const [error, setError] = useState("");
 
   function loadClients() {
+    setLoadError(false);
     fetch("/api/clients")
-      .then((res) => res.json())
+      .then(async (res) => {
+        if (res.status === 403) {
+          setNeedsSubscription(true);
+          return { clients: [] };
+        }
+        if (!res.ok) throw new Error("clients fetch failed");
+        return res.json();
+      })
       .then((data) => setClients(data.clients || []))
+      .catch(() => setLoadError(true))
       .finally(() => setLoading(false));
   }
 
@@ -46,7 +62,14 @@ export default function ClientsPage() {
     setError("");
   }
 
+  function openAddForm() {
+    if (!hasSubscription) return;
+    resetForm();
+    setShowForm(true);
+  }
+
   function startEdit(client: Client) {
+    if (!hasSubscription) return;
     setForm({
       name: client.name,
       phone: client.phone,
@@ -58,6 +81,7 @@ export default function ClientsPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!hasSubscription) return;
     setError("");
 
     const url = editingId ? `/api/clients/${editingId}` : "/api/clients";
@@ -69,9 +93,13 @@ export default function ClientsPage() {
       body: JSON.stringify(form),
     });
 
+    const data = await res.json();
+
     if (!res.ok) {
-      const data = await res.json();
-      setError(data.error || "Failed to save");
+      if (data.code === "SUBSCRIPTION_REQUIRED") {
+        setNeedsSubscription(true);
+      }
+      setError(data.error || t("clients.saveFailed"));
       return;
     }
 
@@ -80,38 +108,64 @@ export default function ClientsPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Delete this client?")) return;
+    if (!hasSubscription) return;
+    if (!confirm(t("clients.deleteConfirm"))) return;
     await fetch(`/api/clients/${id}`, { method: "DELETE" });
     loadClients();
   }
 
-  if (loading) return <p className="text-gray-500">Loading clients...</p>;
+  if (loading) return <p className="text-gray-500">{t("common.loading")}</p>;
+
+  if (loadError) {
+    return (
+      <div className="card max-w-lg text-center">
+        <p className="text-red-600">{t("common.error")}</p>
+        <Button className="mt-4" onClick={loadClients}>
+          {t("common.retry")}
+        </Button>
+      </div>
+    );
+  }
+
+  if (needsSubscription || !hasSubscription) {
+    return (
+      <div>
+        <h1 className="text-2xl font-bold">{t("clients.title")}</h1>
+        <SubscriptionGate className="mt-6" />
+      </div>
+    );
+  }
 
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Clients</h1>
-          <p className="text-gray-500">
-            {clients.length} total · grows automatically from bookings
-          </p>
+          <h1 className="text-2xl font-bold">{t("clients.title")}</h1>
+          <p className="text-gray-500">{clients.length} {t("clients.totalLabel")}</p>
         </div>
-        <Button onClick={() => { resetForm(); setShowForm(true); }}>+ Add client</Button>
+        <Button onClick={openAddForm}>+ {t("clients.addClient")}</Button>
       </div>
-
-      <p className="mt-2 text-sm text-gray-500">
-        No setup needed — clients are created when they book, or you can add them manually.
-      </p>
 
       {showForm && (
         <form onSubmit={handleSubmit} className="card mt-6 space-y-4">
-          <h2 className="font-semibold">{editingId ? "Edit client" : "Add client (optional)"}</h2>
-          <p className="text-xs text-gray-500">Only name and phone required. Visit dates update from appointments.</p>
+          <h2 className="font-semibold">
+            {editingId ? t("clients.editClient") : t("clients.addClient")}
+          </h2>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Input label="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-            <Input label="Phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} required />
             <Input
-              label="Notes (optional)"
+              label={t("clients.name")}
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              required
+            />
+            <Input
+              label={t("clients.phone")}
+              value={form.phone}
+              onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              required
+            />
+            <Input
+              label={t("clients.notes")}
               value={form.notes}
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
               className="sm:col-span-2"
@@ -119,9 +173,9 @@ export default function ClientsPage() {
           </div>
           {error && <p className="text-sm text-red-500">{error}</p>}
           <div className="flex gap-2">
-            <Button type="submit">Save</Button>
+            <Button type="submit">{t("common.save")}</Button>
             <Button type="button" variant="secondary" onClick={resetForm}>
-              Cancel
+              {t("common.cancel")}
             </Button>
           </div>
         </form>
@@ -129,10 +183,9 @@ export default function ClientsPage() {
 
       {clients.length === 0 ? (
         <div className="card mt-8 text-center text-gray-500">
-          <p>Start by adding your first client</p>
-          <p className="mt-2 text-sm">Or share your booking link — clients will appear automatically</p>
-          <Button className="mt-4" onClick={() => setShowForm(true)}>
-            + Add client
+          <p>{t("clients.noClients")}</p>
+          <Button className="mt-4" onClick={openAddForm}>
+            + {t("clients.addClient")}
           </Button>
         </div>
       ) : (
@@ -146,11 +199,6 @@ export default function ClientsPage() {
                   <OptInBadge optIn={client.optIn} />
                 </div>
                 <p className="text-sm text-gray-500">{client.phone}</p>
-                {client.lastVisitDate && (
-                  <p className="text-xs text-gray-400">
-                    Last visit: {new Date(client.lastVisitDate).toLocaleDateString()}
-                  </p>
-                )}
               </div>
               <div className="flex flex-wrap gap-2">
                 <WhatsAppButton
@@ -160,10 +208,10 @@ export default function ClientsPage() {
                   lastMessageSentDate={client.lastMessageSentDate}
                 />
                 <Button variant="secondary" onClick={() => startEdit(client)}>
-                  Edit
+                  {t("common.edit")}
                 </Button>
                 <Button variant="danger" onClick={() => handleDelete(client._id)}>
-                  Delete
+                  {t("common.delete")}
                 </Button>
               </div>
             </div>
@@ -173,4 +221,3 @@ export default function ClientsPage() {
     </div>
   );
 }
-

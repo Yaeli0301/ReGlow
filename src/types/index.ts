@@ -1,4 +1,5 @@
 export type SubscriptionTier = "none" | "basic" | "pro" | "premium";
+export type UserRole = "business" | "admin";
 
 export type ClientStatus = "active" | "atRisk" | "lost";
 
@@ -8,6 +9,7 @@ export interface SessionUser {
   id: string;
   email: string;
   businessName: string;
+  role: UserRole;
   subscriptionTier: SubscriptionTier;
 }
 

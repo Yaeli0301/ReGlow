@@ -9,11 +9,17 @@ import {
 import { WeeklySchedule, DEFAULT_WEEKLY, type IDaySchedule } from "@/models/WeeklySchedule";
 import { DateOverride, type IBlockedSlot } from "@/models/DateOverride";
 import { Appointment } from "@/models/Appointment";
+import { resolveServiceDuration } from "@/lib/service-duration";
 
 export interface TimeSlot {
   start: Date;
   end: Date;
-  label: string; // "10:00"
+  label: string;
+}
+
+export interface GetSlotsOptions {
+  excludeAppointmentId?: string;
+  slotDurationMinutes?: number;
 }
 
 function parseTimeOnDate(date: Date, time: string): Date {
@@ -26,12 +32,7 @@ function timeToMinutes(time: string): number {
   return h * 60 + m;
 }
 
-function rangesOverlap(
-  aStart: number,
-  aEnd: number,
-  bStart: number,
-  bEnd: number
-): boolean {
+function rangesOverlap(aStart: number, aEnd: number, bStart: number, bEnd: number): boolean {
   return aStart < bEnd && bStart < aEnd;
 }
 
@@ -43,6 +44,37 @@ function isSlotBlocked(
   return blocked.some((b) =>
     rangesOverlap(slotStart, slotEnd, timeToMinutes(b.startTime), timeToMinutes(b.endTime))
   );
+}
+
+/** Booked minute ranges per appointment duration (smart scheduling). */
+export async function getBookedRangesForDay(
+  userId: string,
+  dayStart: Date,
+  excludeAppointmentId?: string
+): Promise<Array<{ start: number; end: number }>> {
+  const appointments = await Appointment.find({
+    userId,
+    date: {
+      $gte: dayStart,
+      $lt: addMinutes(dayStart, 24 * 60),
+    },
+    status: { $ne: "canceled" },
+    ...(excludeAppointmentId ? { _id: { $ne: excludeAppointmentId } } : {}),
+  }).select("date durationMinutes serviceId");
+
+  const ranges: Array<{ start: number; end: number }> = [];
+
+  for (const a of appointments) {
+    let dur = a.durationMinutes || 60;
+    if (!a.durationMinutes && a.serviceId) {
+      dur = await resolveServiceDuration(userId, a.serviceId.toString());
+    }
+    const start = new Date(a.date);
+    const startMin = timeToMinutes(format(start, "HH:mm"));
+    ranges.push({ start: startMin, end: startMin + dur });
+  }
+
+  return ranges;
 }
 
 export async function getOrCreateWeeklySchedule(userId: string) {
@@ -89,43 +121,25 @@ export function getDayConfig(
 export async function getAvailableSlots(
   userId: string,
   date: Date,
-  options?: { excludeAppointmentId?: string }
+  options?: GetSlotsOptions
 ): Promise<TimeSlot[]> {
   const schedule = await getOrCreateWeeklySchedule(userId);
   const dayStart = startOfDay(date);
   const dayOfWeek = date.getDay();
 
-  const override = await DateOverride.findOne({
-    userId,
-    date: dayStart,
-  });
-
+  const override = await DateOverride.findOne({ userId, date: dayStart });
   const config = getDayConfig(dayOfWeek, schedule.days, override);
   if (!config) return [];
 
-  const duration = schedule.slotDurationMinutes;
+  const duration = options?.slotDurationMinutes ?? schedule.slotDurationMinutes;
   const rangeStart = parseTimeOnDate(date, config.startTime);
   const rangeEnd = parseTimeOnDate(date, config.endTime);
 
-  const appointments = await Appointment.find({
+  const bookedRanges = await getBookedRangesForDay(
     userId,
-    date: {
-      $gte: dayStart,
-      $lt: addMinutes(dayStart, 24 * 60),
-    },
-    status: { $ne: "canceled" },
-    ...(options?.excludeAppointmentId
-      ? { _id: { $ne: options.excludeAppointmentId } }
-      : {}),
-  }).select("date");
-
-  const bookedRanges = appointments.map((a) => {
-    const start = new Date(a.date);
-    return {
-      start: timeToMinutes(format(start, "HH:mm")),
-      end: timeToMinutes(format(addMinutes(start, duration), "HH:mm")),
-    };
-  });
+    dayStart,
+    options?.excludeAppointmentId
+  );
 
   const slots: TimeSlot[] = [];
   let cursor = rangeStart;

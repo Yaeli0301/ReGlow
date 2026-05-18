@@ -9,6 +9,14 @@ export const WHATSAPP_TEMPLATES = {
     "Hey ❤️ it's been a while since your last visit. We'd love to see you again 💖",
   winBack:
     "We miss you! 💖 Come back for a special treat — book your next visit today.",
+  retentionStep1:
+    "Hey, we miss you! Want to book again? 💖",
+  retentionStep2:
+    "We have available slots this week — want me to find you a time? 💖",
+  appointmentCanceled:
+    "Hi — your appointment was canceled. We'd love to reschedule you. Reply to pick a new time 💖",
+  rescheduleOffer:
+    "Here are available times — reply with your preferred option 💖",
 } as const;
 
 export type WhatsAppTemplateKey = keyof typeof WHATSAPP_TEMPLATES;

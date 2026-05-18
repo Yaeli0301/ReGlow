@@ -1,6 +1,6 @@
 import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
-import type { SessionUser, SubscriptionTier } from "@/types";
+import type { SessionUser, SubscriptionTier, UserRole } from "@/types";
 
 function getJwtSecret(): string {
   const secret = process.env.JWT_SECRET;
@@ -54,12 +54,14 @@ export function buildSessionUser(user: {
   _id: { toString(): string };
   email: string;
   businessName: string;
+  role?: UserRole;
   subscriptionTier: SubscriptionTier;
 }): SessionUser {
   return {
     id: user._id.toString(),
     email: user.email,
     businessName: user.businessName,
+    role: user.role || "business",
     subscriptionTier: user.subscriptionTier,
   };
 }

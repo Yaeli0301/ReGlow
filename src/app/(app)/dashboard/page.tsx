@@ -1,24 +1,33 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
 import { WhatsAppButton } from "@/components/clients/WhatsAppButton";
 import { WHATSAPP_TEMPLATES } from "@/lib/whatsapp";
 import { ReferralPanel } from "@/components/referral/ReferralPanel";
+import { useT } from "@/contexts/LanguageContext";
+import { useHasSubscription } from "@/contexts/AppUserContext";
+import { parseJsonResponse } from "@/lib/client-api";
+import { Button } from "@/components/ui/Button";
+import { SubscriptionGate } from "@/components/billing/SubscriptionGate";
 
 interface AppointmentRow {
   _id: string;
   date: string;
   status: string;
   serviceName?: string;
-  clientId?: { name?: string; phone?: string };
+  clientId?: { name?: string; phone?: string } | null;
 }
 
 interface DashboardStats {
   totalClients: number;
+  activeClients: number;
   returningThisMonth: number;
   lostClients: number;
+  churnRate: number;
+  returningRevenue: number;
+  returningVisits: number;
   estimatedRevenue: number;
   todayAppointments: AppointmentRow[];
   upcomingAppointments: AppointmentRow[];
@@ -33,50 +42,90 @@ interface DashboardStats {
 }
 
 export default function DashboardPage() {
+  const t = useT();
+  const hasSubscription = useHasSubscription();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [needsSubscription, setNeedsSubscription] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+
+  const loadStats = useCallback(() => {
+    if (!hasSubscription) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setLoadError(false);
+
+    fetch("/api/dashboard/stats", { cache: "no-store" })
+      .then((res) => parseJsonResponse<DashboardStats>(res))
+      .then((result) => {
+        if (!result.ok) {
+          if (result.status !== 403) setLoadError(true);
+          return;
+        }
+        setStats(result.data);
+      })
+      .catch(() => setLoadError(true))
+      .finally(() => setLoading(false));
+  }, [hasSubscription]);
 
   useEffect(() => {
-    fetch("/api/dashboard/stats")
-      .then(async (res) => {
-        if (res.status === 403) {
-          setNeedsSubscription(true);
-          return null;
-        }
-        return res.json();
-      })
-      .then((data) => {
-        if (data) setStats(data);
-      })
-      .finally(() => setLoading(false));
-  }, []);
+    loadStats();
+  }, [loadStats]);
 
-  if (loading) return <p className="text-gray-500">טוען...</p>;
-
-  if (needsSubscription) {
+  if (!hasSubscription) {
     return (
-      <div className="card max-w-lg text-center">
-        <h1 className="text-2xl font-bold">בחרי מנוי כדי להתחיל</h1>
-        <Link href="/billing" className="btn-primary mt-6 inline-block">
-          לצפייה במנויים →
-        </Link>
+      <div>
+        <h1 className="text-2xl font-bold">{t("dashboard.title")}</h1>
+        <SubscriptionGate className="mt-6" />
       </div>
     );
   }
 
-  const reminderClient = stats?.lostList.find((c) => c.optIn);
+  if (loading) return <p className="text-gray-500">{t("common.loading")}</p>;
+
+  if (loadError || !stats) {
+    return (
+      <div className="card max-w-lg text-center">
+        <h1 className="text-xl font-bold text-red-600">{t("dashboard.loadError")}</h1>
+        <p className="mt-2 text-sm text-gray-600">{t("dashboard.loadErrorHint")}</p>
+        <Button className="mt-4" onClick={loadStats}>
+          {t("common.retry")}
+        </Button>
+      </div>
+    );
+  }
+
+  const reminderClient = stats.lostList.find((c) => c.optIn);
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900">בואי נחזיר את הלקוחות שלך 💖</h1>
-      <p className="mt-1 text-gray-500">סקירה עסקית להיום</p>
+      <h1 className="text-2xl font-bold text-gray-900">{t("dashboard.title")}</h1>
+      <p className="mt-1 text-gray-500">{t("dashboard.subtitle")}</p>
 
-      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="סה״כ לקוחות" value={stats?.totalClients ?? 0} />
-        <StatCard label="תורים היום" value={stats?.todayAppointments?.length ?? 0} accent />
-        <StatCard label="לקוחות אבודים" value={stats?.lostClients ?? 0} danger />
-        <StatCard label="הכנסה משוערת (חוזרות)" value={`₪${stats?.estimatedRevenue ?? 0}`} accent />
+      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        <StatCard label={t("dashboard.totalClients")} value={stats.totalClients} />
+        <StatCard label={t("dashboard.activeClients")} value={stats.activeClients ?? 0} accent />
+        <StatCard
+          label={t("dashboard.todayAppointments")}
+          value={stats.todayAppointments.length}
+        />
+        <StatCard label={t("dashboard.lostClients")} value={stats.lostClients} danger />
+        <StatCard
+          label={t("dashboard.churnRate")}
+          value={`${stats.churnRate ?? 0}%`}
+          danger
+        />
+        <StatCard
+          label={t("dashboard.returningRevenue")}
+          value={`${t("common.currency")}${stats.returningRevenue ?? 0}`}
+          accent
+        />
+        <StatCard
+          label={t("dashboard.estimatedRevenue")}
+          value={`${t("common.currency")}${stats.estimatedRevenue}`}
+        />
       </div>
 
       {reminderClient && (
@@ -86,21 +135,21 @@ export default function DashboardPage() {
             message={WHATSAPP_TEMPLATES.reEngagement}
             optIn={reminderClient.optIn}
             lastMessageSentDate={reminderClient.lastMessageSentDate}
-            label="שליחת תזכורת WhatsApp"
+            label={t("dashboard.sendReminder")}
           />
         </div>
       )}
 
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
         <div className="card">
-          <h2 className="font-semibold text-brand-700">תורים היום</h2>
-          {stats?.todayAppointments?.length === 0 ? (
-            <p className="mt-3 text-sm text-gray-500">אין תורים להיום</p>
+          <h2 className="font-semibold text-brand-700">{t("dashboard.todayTitle")}</h2>
+          {stats.todayAppointments.length === 0 ? (
+            <p className="mt-3 text-sm text-gray-500">{t("dashboard.noToday")}</p>
           ) : (
             <ul className="mt-3 space-y-2">
-              {stats?.todayAppointments?.map((a) => (
+              {stats.todayAppointments.map((a) => (
                 <li key={a._id} className="flex justify-between rounded-xl bg-brand-50 px-3 py-2 text-sm">
-                  <span>{a.clientId?.name}</span>
+                  <span>{a.clientId?.name ?? "—"}</span>
                   <span className="text-brand-600">{format(new Date(a.date), "HH:mm")}</span>
                 </li>
               ))}
@@ -109,23 +158,21 @@ export default function DashboardPage() {
         </div>
 
         <div className="card">
-          <h2 className="font-semibold">תורים קרובים</h2>
-          {stats?.upcomingAppointments?.length === 0 ? (
-            <p className="mt-3 text-sm text-gray-500">אין תורים קרובים</p>
+          <h2 className="font-semibold">{t("dashboard.upcomingTitle")}</h2>
+          {stats.upcomingAppointments.length === 0 ? (
+            <p className="mt-3 text-sm text-gray-500">{t("dashboard.noUpcoming")}</p>
           ) : (
             <ul className="mt-3 space-y-2">
-              {stats?.upcomingAppointments?.map((a) => (
+              {stats.upcomingAppointments.map((a) => (
                 <li key={a._id} className="flex justify-between rounded-xl bg-gray-50 px-3 py-2 text-sm">
-                  <span>{a.clientId?.name}</span>
-                  <span className="text-gray-500">
-                    {format(new Date(a.date), "dd/MM HH:mm")}
-                  </span>
+                  <span>{a.clientId?.name ?? "—"}</span>
+                  <span className="text-gray-500">{format(new Date(a.date), "dd/MM HH:mm")}</span>
                 </li>
               ))}
             </ul>
           )}
           <Link href="/appointments" className="mt-3 inline-block text-sm text-brand-600 hover:underline">
-            ליומן המלא →
+            {t("dashboard.fullCalendar")} →
           </Link>
         </div>
       </div>
@@ -133,43 +180,45 @@ export default function DashboardPage() {
       <ReferralPanel compact />
 
       <div className="mt-10">
-        <h2 className="text-lg font-semibold text-red-600">לקוחות שאת מפסידה עליהם כסף</h2>
-        <p className="text-sm text-gray-500">לא הופיעו מעל 30 יום</p>
+        <h2 className="text-lg font-semibold text-red-600">{t("dashboard.lostTitle")}</h2>
+        <p className="text-sm text-gray-500">{t("dashboard.lostSubtitle")}</p>
 
-        {stats?.lostList.length === 0 ? (
+        {stats.lostList.length === 0 ? (
           <div className="card mt-4 text-center text-gray-500">
-            <p>אין לקוחות אבודים כרגע — כל הכבוד! 🎉</p>
-            {stats?.totalClients === 0 && (
+            <p>{t("dashboard.noLost")}</p>
+            {stats.totalClients === 0 && (
               <p className="mt-2">
                 <Link href="/clients" className="text-brand-600 hover:underline">
-                  התחילי בהוספת לקוח ראשון
+                  {t("dashboard.addFirstClient")}
                 </Link>
               </p>
             )}
           </div>
         ) : (
           <div className="mt-4 space-y-3">
-            {stats?.lostList.map((client) => (
+            {stats.lostList.map((client) => (
               <div
                 key={client._id}
                 className="card flex flex-wrap items-center justify-between gap-3 border-red-100 bg-red-50/50"
               >
                 <div>
                   <p className="font-medium">{client.name}</p>
-                  <p className="text-sm text-red-600">{client.daysSince} ימים ללא ביקור</p>
+                  <p className="text-sm text-red-600">
+                    {client.daysSince} {t("dashboard.daysSince")}
+                  </p>
                 </div>
                 <WhatsAppButton
                   phone={client.phone}
                   message={WHATSAPP_TEMPLATES.reactivation}
                   optIn={client.optIn}
                   lastMessageSentDate={client.lastMessageSentDate}
-                  label="שליחת הודעת החזרה"
+                  label={t("dashboard.sendReturn")}
                   className="text-xs"
                 />
               </div>
             ))}
             <Link href="/lost-clients" className="text-sm font-medium text-brand-600 hover:underline">
-              כל הלקוחות האבודים →
+              {t("dashboard.allLost")} →
             </Link>
           </div>
         )}

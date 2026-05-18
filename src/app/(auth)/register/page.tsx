@@ -5,13 +5,20 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { LanguageSwitcher } from "@/components/ui/LanguageSwitcher";
+import { useT } from "@/contexts/LanguageContext";
 
 export default function RegisterPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const t = useT();
   const [referralCode, setReferralCode] = useState("");
   const [referralFromFriend, setReferralFromFriend] = useState(false);
   const [businessName, setBusinessName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const ref = searchParams.get("ref");
@@ -20,10 +27,6 @@ export default function RegisterPage() {
       setReferralFromFriend(true);
     }
   }, [searchParams]);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -45,14 +48,14 @@ export default function RegisterPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || "Registration failed");
+        setError(data.error || t("auth.registerFailed"));
         return;
       }
 
       router.push("/billing");
       router.refresh();
     } catch {
-      setError("Something went wrong");
+      setError(t("common.error"));
     } finally {
       setLoading(false);
     }
@@ -60,29 +63,38 @@ export default function RegisterPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
+      <div className="absolute top-4 end-4">
+        <LanguageSwitcher />
+      </div>
       <div className="card w-full max-w-md">
         <Link href="/" className="text-2xl font-bold text-brand-600">
           ReGlow
         </Link>
-        <h1 className="mt-6 text-2xl font-bold">Create your account</h1>
-        <p className="mt-1 text-sm text-gray-500">Start growing your salon today</p>
+        <h1 className="mt-6 text-2xl font-bold">{t("auth.createAccount")}</h1>
+        <p className="mt-1 text-sm text-gray-500">{t("auth.createSubtitle")}</p>
 
         {referralFromFriend && (
           <div className="mt-4 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm text-brand-800">
-            הוזמנת על ידי חברה — נרשמי ותקבלי גישה מלאה ל-ReGlow 💖
+            {t("auth.referredBanner")}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="mt-8 space-y-4">
           <Input
-            label="Business name"
+            label={t("auth.businessName")}
             value={businessName}
             onChange={(e) => setBusinessName(e.target.value)}
             required
           />
-          <Input label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
           <Input
-            label="Password (min 8 characters)"
+            label={t("auth.email")}
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+          <Input
+            label={t("auth.passwordMin")}
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -91,14 +103,14 @@ export default function RegisterPage() {
           />
           {error && <p className="text-sm text-red-500">{error}</p>}
           <Button type="submit" loading={loading} className="w-full">
-            Create account
+            {t("auth.createAccount")}
           </Button>
         </form>
 
         <p className="mt-6 text-center text-sm text-gray-500">
-          Already have an account?{" "}
+          {t("auth.hasAccount")}{" "}
           <Link href="/login" className="font-medium text-brand-600 hover:underline">
-            Sign in
+            {t("auth.signIn")}
           </Link>
         </p>
       </div>

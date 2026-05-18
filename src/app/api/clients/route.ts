@@ -48,6 +48,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Upgrade required" }, { status: 403 });
   }
 
+  if (auth.user.subscriptionTier === "none") {
+    return NextResponse.json(
+      {
+        error: "יש לבחור חבילה ולהשלים תשלום לפני הוספת לקוחות",
+        code: "SUBSCRIPTION_REQUIRED",
+      },
+      { status: 403 }
+    );
+  }
+
   const subError = requireSubscription(auth.user);
   if (subError) return subError;
 

@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { startOfDay } from "date-fns";
 import { connectDB } from "@/lib/mongodb";
 import { User } from "@/models/User";
-import { Appointment } from "@/models/Appointment";
 import { Service } from "@/models/Service";
 import { canAccess } from "@/lib/subscription";
 import { upsertClientByPhone } from "@/lib/client-service";
-import { getAvailableSlots } from "@/lib/availability";
+import { createValidatedAppointment } from "@/lib/appointment-create";
+import { resetClientRetention } from "@/lib/retention-engine";
+import { SchedulingConflictError } from "@/lib/scheduling";
+import { getOrCreateBusinessSettings, serializeBusinessSettings } from "@/lib/business-settings";
+import { buildPriceBreakdown, serializeService } from "@/lib/pricing";
 
 const bookSchema = z.object({
   name: z.string().min(1),
@@ -17,6 +19,7 @@ const bookSchema = z.object({
   }),
   serviceId: z.string().optional(),
   serviceName: z.string().optional(),
+  selectedAddOnIds: z.array(z.string()).optional(),
   date: z.string(),
   notes: z.string().optional(),
 });
@@ -33,11 +36,18 @@ export async function GET(
     return NextResponse.json({ error: "Booking not available" }, { status: 404 });
   }
 
-  const services = await Service.find({ userId: businessId, active: true }).lean();
+  const [services, settings] = await Promise.all([
+    Service.find({ userId: businessId, active: true }).sort({ sortOrder: 1 }).lean(),
+    getOrCreateBusinessSettings(businessId),
+  ]);
 
   return NextResponse.json({
-    businessName: user.businessName,
-    services,
+    businessId,
+    businessName: settings.businessName || user.businessName,
+    branding: serializeBusinessSettings(settings, true),
+    services: services.map((s) =>
+      serializeService(s as Parameters<typeof serializeService>[0])
+    ),
   });
 }
 
@@ -62,42 +72,50 @@ export async function POST(
       return NextResponse.json({ error: msg }, { status: 400 });
     }
 
-    const { name, phone, optIn, serviceId, serviceName, date, notes } = parsed.data;
+    const { name, phone, optIn, serviceId, serviceName, selectedAddOnIds, date, notes } =
+      parsed.data;
     const appointmentDate = new Date(date);
 
-    const daySlots = await getAvailableSlots(businessId, startOfDay(appointmentDate));
-    const slotValid = daySlots.some(
-      (s) => Math.abs(s.start.getTime() - appointmentDate.getTime()) < 60000
-    );
-
-    if (!slotValid) {
-      return NextResponse.json({ error: "This time slot is no longer available" }, { status: 409 });
-    }
-
-    let resolvedServiceName = serviceName || "General";
-
+    let service = null;
     if (serviceId) {
-      const service = await Service.findOne({ _id: serviceId, userId: businessId });
-      if (service) resolvedServiceName = service.name;
+      service = await Service.findOne({ _id: serviceId, userId: businessId, active: true });
     }
+
+    const pricing = buildPriceBreakdown({
+      service,
+      serviceName,
+      selectedAddOnIds,
+    });
 
     const client = await upsertClientByPhone({
       userId: businessId,
       name,
       phone,
-      lastVisitDate: appointmentDate,
       optIn,
       notes: notes || "Booked online",
     });
 
-    const appointment = await Appointment.create({
-      userId: businessId,
-      clientId: client._id,
-      date: appointmentDate,
-      status: "scheduled",
-      serviceName: resolvedServiceName,
-      notes: notes || "Online booking",
-    });
+    let appointment;
+    try {
+      appointment = await createValidatedAppointment({
+        userId: businessId,
+        clientId: client._id.toString(),
+        date: appointmentDate,
+        serviceId: service?._id.toString(),
+        serviceName: pricing.serviceName,
+        selectedAddOns: pricing.selectedAddOns,
+        priceLineItems: pricing.lineItems,
+        finalPrice: pricing.finalPrice,
+        notes: notes || "Online booking",
+      });
+    } catch (e) {
+      if (e instanceof SchedulingConflictError) {
+        return NextResponse.json({ error: e.message }, { status: 409 });
+      }
+      throw e;
+    }
+
+    await resetClientRetention(client._id.toString());
 
     return NextResponse.json(
       {
@@ -106,7 +124,9 @@ export async function POST(
         message: "Booking confirmed!",
         businessName: user.businessName,
         appointmentDate: appointmentDate.toISOString(),
-        serviceName: resolvedServiceName,
+        serviceName: pricing.serviceName,
+        lineItems: pricing.lineItems,
+        finalPrice: pricing.finalPrice,
       },
       { status: 201 }
     );

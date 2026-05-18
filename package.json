@@ -4,14 +4,23 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:clean": "node -e \"try{require('fs').rmSync('.next',{recursive:true,force:true})}catch(e){}\" && next dev",
     "build": "next build",
+    "build:clean": "node -e \"try{require('fs').rmSync('.next',{recursive:true,force:true})}catch(e){}\" && next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "vitest run",
+    "test:unit": "vitest run tests/unit",
+    "test:integration": "vitest run tests/integration",
+    "test:watch": "vitest",
+    "test:smoke": "node scripts/smoke-test.mjs",
+    "seed:demo": "npx tsx scripts/seed-demo.ts"
   },
   "dependencies": {
     "@types/node": "^25.8.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "archiver": "^8.0.0",
     "autoprefixer": "^10.5.0",
     "bcryptjs": "^3.0.3",
     "date-fns": "^3.6.0",
@@ -19,6 +28,7 @@
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.6.2",
     "next": "^15.5.18",
+    "pdf-lib": "^1.17.1",
     "postcss": "^8.5.14",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
@@ -28,9 +38,13 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@types/archiver": "^7.0.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/jsonwebtoken": "^9.0.10",
     "eslint": "^9.39.4",
-    "eslint-config-next": "^16.2.6"
+    "eslint-config-next": "^16.2.6",
+    "mongodb-memory-server": "^10.1.4",
+    "tsx": "^4.19.4",
+    "vitest": "^3.2.4"
   }
 }

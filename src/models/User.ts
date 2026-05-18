@@ -1,10 +1,11 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
-import type { SubscriptionTier } from "@/types";
+import type { SubscriptionTier, UserRole } from "@/types";
 
 export interface IUser extends Document {
   email: string;
   password: string;
   businessName: string;
+  role: UserRole;
   subscriptionTier: SubscriptionTier;
   stripeCustomerId?: string;
   stripeSubscriptionId?: string;
@@ -20,6 +21,7 @@ const UserSchema = new Schema<IUser>(
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     password: { type: String, required: true },
     businessName: { type: String, required: true, trim: true },
+    role: { type: String, enum: ["business", "admin"], default: "business" },
     subscriptionTier: {
       type: String,
       enum: ["none", "basic", "pro", "premium"],

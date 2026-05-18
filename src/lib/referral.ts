@@ -16,12 +16,8 @@ export function normalizeReferralCode(code: string): string {
 }
 
 export function buildReferralLink(referralCode: string): string {
-  const base = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const base = (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000").replace(/\/$/, "");
   return `${base}/register?ref=${encodeURIComponent(referralCode)}`;
-}
-
-export function buildReferralShareMessage(referralLink: string): string {
-  return `היי! 💖 אני משתמשת ב-ReGlow לניהול הסלון שלי — ממליצה בחום! נרשמי דרך הקישור ונקבל שתינו הטבה:\n${referralLink}`;
 }
 
 export { MAX_REFERRALS_PER_REFERRER };

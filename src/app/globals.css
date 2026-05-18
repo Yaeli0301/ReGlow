@@ -1,4 +1,8 @@
 @tailwind base;
+
+body {
+  font-family: var(--font-heebo), system-ui, sans-serif;
+}
 @tailwind components;
 @tailwind utilities;
 
@@ -39,5 +43,13 @@
 
   .badge-lost {
     @apply rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-700;
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
   }
 }
