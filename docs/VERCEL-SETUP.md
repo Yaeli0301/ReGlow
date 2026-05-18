@@ -58,7 +58,33 @@ Stripe (כשמוכן):
 | `STRIPE_PRICE_PRO` | `price_...` |
 | `STRIPE_PRICE_PREMIUM` | `price_...` |
 
-**Save** → **Deployments** → **Redeploy** (או דחיפה ל-GitHub).
+**Save** → **Deployments** → פריסה **חדשה** מ-`main` (לא רק Redeploy).
+
+### למה אחרי Redeploy האתר עדיין נראה ישן?
+
+**Redeploy** על פריסה ישנה = אותו קוד ישן (אנגלית, בלי RTL). זה **לא** מושך את GitHub.
+
+סימנים שהפרודקשן תקוע על גרסה ישנה:
+- דף הבית באנגלית: "Bring your clients back"
+- `https://re-glow.vercel.app/api/setup/status` מחזיר **404**
+- אחרי דחיפה ל-GitHub האתר לא משתנה
+
+**פתרון:**
+
+1. [Vercel Dashboard](https://vercel.com) → פרויקט **re-glow** → **Settings** → **Git**
+2. ודאי: Repository = `Yaeli0301/ReGlow`, Production Branch = `main`
+3. אם אין חיבור Git — **Connect Git Repository** ובחרי את הריפו
+4. **Deployments** → הפריסה האחרונה מ-`main` (commit `32f8720` ומעלה) → **⋯** → **Promote to Production**  
+   (או המתיני ל-Deploy אוטומטי אחרי `git push`)
+5. **אל** תלחצי רק "Redeploy" על הפריסה הישנה
+
+אימות שהגרסה החדשה עלתה:
+
+```text
+https://re-glow.vercel.app/api/setup/status
+```
+
+צריך JSON עם `"deploy":{"commit":"32f8720"}` (או commit חדש יותר), ודף הבית בעברית עם `lang="he" dir="rtl"`.
 
 ## 3. בדיקה
 

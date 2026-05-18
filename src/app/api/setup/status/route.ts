@@ -10,6 +10,10 @@ export async function GET() {
   return NextResponse.json({
     envMode: getEnvMode(),
     appUrl: process.env.NEXT_PUBLIC_APP_URL || null,
+    deploy: {
+      commit: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? null,
+      ref: process.env.VERCEL_GIT_COMMIT_REF ?? null,
+    },
     checks: {
       mongo: Boolean(process.env.MONGODB_URI?.trim()),
       jwt: jwt.length >= 32,

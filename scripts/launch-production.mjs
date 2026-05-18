@@ -82,7 +82,16 @@ if (status.error) {
 } else if (status.status === 404) {
   console.log("  ○ setup/status 404 — דחפי קוד חדש ל-GitHub + Redeploy");
 } else {
-  console.log("  setup/status", status.status, status.json?.checks || "");
+  const commit = status.json?.deploy?.commit;
+  console.log(
+    "  setup/status",
+    status.status,
+    status.json?.checks || "",
+    commit ? `(commit ${commit})` : ""
+  );
+  if (status.status === 200 && commit && !String(commit).startsWith("32f872")) {
+    console.log("  ○ commit on server differs from latest push — check Vercel Production deployment");
+  }
 }
 
 if (health.error) {
