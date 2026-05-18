@@ -43,6 +43,9 @@ mongodb+srv://yaeli:YOUR_PASSWORD@cluster0.iociobd.mongodb.net/reglow?retryWrite
 | `ENV_MODE` | `production` |
 | `NEXT_PUBLIC_APP_URL` | `https://re-glow.vercel.app` |
 | `CRON_SECRET` | מחרוזת אקראית 16+ תווים |
+| `ENABLE_LANDING_DEMO` | `true` — כפתור דמו בדף הנחיתה (מכירה) |
+
+יצירת סודות: `npm run secrets:generate`
 
 Stripe (כשמוכן):
 
@@ -77,6 +80,21 @@ https://re-glow.vercel.app/api/health
 ```
 
 אם `database: error` — בדקי IP ב-Atlas ו-`MONGODB_URI`.
+
+בדיקת הגדרות (ללא סודות):
+
+```text
+https://re-glow.vercel.app/api/setup/status
+```
+
+יצירת משתמשי דמו בפרודקשן (פעם אחת, אחרי DB מחובר):
+
+```bash
+curl -X POST https://re-glow.vercel.app/api/setup/seed \
+  -H "Authorization: Bearer YOUR_CRON_SECRET"
+```
+
+מקומית: `npm run launch:prod`
 
 ## 4. משתמשי דמו ב-Atlas
 

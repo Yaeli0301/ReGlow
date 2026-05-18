@@ -26,16 +26,33 @@ async function check(path, expectOk = true) {
 
 console.log("Verifying", base, "\n");
 
+const apiAlive = await check("/api/auth/me", false);
 const health = await check("/api/health");
+const status = await check("/api/setup/status");
 const home = await check("/");
 const login = await check("/login");
 
-const healthy =
-  health.json?.checks?.database === "ok" &&
-  health.json?.checks?.env_jwt === "ok";
+const apiUp = apiAlive.status === 401 || apiAlive.json?.error === "Unauthorized";
+if (!apiUp) {
+  console.log("\nAPI not responding — check Vercel deployment and GitHub connection.");
+  process.exit(1);
+}
 
-if (!healthy) {
-  console.log("\nHealth degraded — set MONGODB_URI and JWT_SECRET on Render.");
+const healthy =
+  health.json?.checks?.database === "ok" && health.json?.checks?.env_jwt === "ok";
+
+const statusOk =
+  status.json?.checks?.mongo && status.json?.checks?.jwt && status.json?.envMode === "production";
+
+if (!healthy && !statusOk) {
+  if (health.status === 404) {
+    console.log("\n/api/health missing — push latest code and Redeploy (API is up via /api/auth/me).");
+  }
+  console.log(
+    "\nDatabase or env not ready — set MONGODB_URI, JWT_SECRET, ENV_MODE=production on Vercel;"
+  );
+  console.log("Atlas → Network Access → 0.0.0.0/0, then Redeploy.");
+  console.log("Then: curl -X POST", base.replace(/\/$/, "") + "/api/setup/seed", '-H "Authorization: Bearer $CRON_SECRET"');
   process.exit(1);
 }
 

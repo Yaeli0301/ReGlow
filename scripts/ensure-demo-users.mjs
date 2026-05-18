@@ -20,8 +20,8 @@ function loadEnvLocal() {
 loadEnvLocal();
 
 const uri =
-  process.env.MONGODB_URI_STANDARD ||
   process.env.MONGODB_URI ||
+  process.env.MONGODB_URI_STANDARD ||
   "mongodb://127.0.0.1:27017/reglow";
 
 const userSchema = new mongoose.Schema({

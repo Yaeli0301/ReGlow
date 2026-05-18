@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { connectDB } from "@/lib/mongodb";
-import { isDemoMode } from "@/lib/env";
+import { canStartLandingDemo } from "@/lib/env";
 import { User } from "@/models/User";
 import { buildSessionUser, signToken, setAuthCookie } from "@/lib/auth";
 import { authSuccessPayload } from "@/lib/auth-response";
@@ -15,11 +15,12 @@ const schema = z.object({
 
 export async function POST(request: Request) {
   try {
-    if (!isDemoMode()) {
+    if (!canStartLandingDemo()) {
       throw new AppError({
         code: "DEMO_ONLY",
         message: "Demo start only in demo mode",
-        userMessage: "הדגמה זמינה רק במצב דמו (ENV_MODE=demo)",
+        userMessage:
+          "הדגמה לא פעילה — הגדירי ENV_MODE=demo בשרת ReGlow והפעילי מחדש",
       });
     }
 

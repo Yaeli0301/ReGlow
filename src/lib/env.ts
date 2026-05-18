@@ -9,10 +9,21 @@ export function isDemoMode(): boolean {
   return getEnvMode() === "demo";
 }
 
-/** In-memory Mongo only for local demo when no URI is configured (not used on Render/production). */
+/** Allows /demo/start from landing page (local or demo deployment) */
+export function canStartLandingDemo(): boolean {
+  return isDemoMode() || process.env.ENABLE_LANDING_DEMO === "true";
+}
+
+/** In-memory Mongo for local demo (set DEMO_USE_MEMORY=true when Atlas is unreachable). */
 export function shouldUseInMemoryMongo(): boolean {
-  if (process.env.RENDER || process.env.NODE_ENV === "production") return false;
-  return isDemoMode() && !process.env.MONGODB_URI_DEMO && !process.env.MONGODB_URI;
+  if (process.env.RENDER) return false;
+  if (process.env.DEMO_USE_MEMORY === "true" && isDemoMode()) return true;
+  return (
+    isDemoMode() &&
+    !process.env.MONGODB_URI_DEMO &&
+    !process.env.MONGODB_URI &&
+    !process.env.MONGODB_URI_STANDARD
+  );
 }
 
 export function getMongoUriOrThrow(): string {
@@ -33,8 +44,13 @@ export function getMongoUriOrThrow(): string {
     }
     return uri;
   }
+  // Vercel + Atlas integration: use SRV URI from the platform (not Windows standard string).
+  if (process.env.VERCEL) {
+    const vercelUri = process.env.MONGODB_URI?.trim();
+    if (vercelUri) return vercelUri;
+  }
   const standard = process.env.MONGODB_URI_STANDARD?.trim();
-  if (standard) return standard;
+  if (standard && !process.env.VERCEL) return standard;
 
   const uri = process.env.MONGODB_URI;
   if (!uri) {
