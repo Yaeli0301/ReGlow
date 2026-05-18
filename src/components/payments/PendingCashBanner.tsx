@@ -24,9 +24,12 @@ export function PendingCashBanner() {
   }
 
   useEffect(() => {
-    load();
-    const t = setInterval(load, 30000);
-    return () => clearInterval(t);
+    const delay = window.setTimeout(load, 1200);
+    const t = window.setInterval(load, 30000);
+    return () => {
+      window.clearTimeout(delay);
+      window.clearInterval(t);
+    };
   }, []);
 
   if (payments.length === 0) return null;

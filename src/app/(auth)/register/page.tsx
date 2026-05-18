@@ -36,6 +36,7 @@ export default function RegisterPage() {
     try {
       const res = await fetch("/api/auth/register", {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           businessName,
@@ -52,8 +53,7 @@ export default function RegisterPage() {
         return;
       }
 
-      router.push("/billing");
-      router.refresh();
+      window.location.assign(data.redirectTo || "/dashboard");
     } catch {
       setError(t("common.error"));
     } finally {

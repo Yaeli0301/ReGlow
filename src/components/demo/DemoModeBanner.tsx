@@ -1,28 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 
-interface DemoStatus {
-  demo: boolean;
-  label?: string;
-  demoLogin?: { email: string };
+interface DemoModeBannerProps {
+  demo?: boolean;
+  demoEmail?: string;
 }
 
-export function DemoModeBanner() {
-  const [status, setStatus] = useState<DemoStatus | null>(null);
+export function DemoModeBanner({ demo = false, demoEmail }: DemoModeBannerProps) {
   const [resetting, setResetting] = useState(false);
-
-  const load = useCallback(() => {
-    fetch("/api/demo/status", { cache: "no-store" })
-      .then((r) => r.json())
-      .then(setStatus)
-      .catch(() => setStatus(null));
-  }, []);
-
-  useEffect(() => {
-    load();
-  }, [load]);
 
   async function resetDemo() {
     setResetting(true);
@@ -34,7 +21,7 @@ export function DemoModeBanner() {
     }
   }
 
-  if (!status?.demo) return null;
+  if (!demo) return null;
 
   return (
     <div
@@ -42,14 +29,14 @@ export function DemoModeBanner() {
       className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950"
     >
       <div>
-        <span className="font-bold">{status.label || "Demo Mode"}</span>
+        <span className="font-bold">Demo Mode</span>
         <span className="mx-2 text-amber-700">·</span>
         <span>
           נתונים לדוגמה בלבד
-          {status.demoLogin?.email && (
+          {demoEmail && (
             <>
               {" "}
-              — התחברות: <code className="rounded bg-amber-100 px-1">{status.demoLogin.email}</code>
+              — התחברות: <code className="rounded bg-amber-100 px-1">{demoEmail}</code>
             </>
           )}
         </span>

@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
-import { startOfMonth, startOfDay, endOfDay, addDays } from "date-fns";
-import { connectDB } from "@/lib/mongodb";
+import { startOfMonth, startOfDay, endOfDay, addDays, subYears } from "date-fns";
 import { requireAuthFromRequest, requireSubscription } from "@/lib/api-auth";
 import { Client } from "@/models/Client";
 import { Appointment } from "@/models/Appointment";
 import { Payment } from "@/models/Payment";
 import { computeClientStatus, daysSinceVisit } from "@/lib/client-status";
 import { serializeAppointmentRow } from "@/lib/serialize";
+import { computeReturningMetrics } from "@/lib/returning-revenue";
 
 export async function GET(request: Request) {
   try {
@@ -16,15 +16,16 @@ export async function GET(request: Request) {
     const subError = requireSubscription(auth.user);
     if (subError) return subError;
 
-    await connectDB();
-
     const now = new Date();
     const todayStart = startOfDay(now);
     const todayEnd = endOfDay(now);
     const monthStart = startOfMonth(now);
 
-    const [clients, todayAppointments, upcomingAppointments] = await Promise.all([
-      Client.find({ userId: auth.user.id }).lean(),
+    const [clients, todayAppointments, upcomingAppointments, allCompleted, paidRevenue, pendingCashCount] =
+      await Promise.all([
+      Client.find({ userId: auth.user.id })
+        .select("name phone optIn lastVisitDate lastMessageSentDate")
+        .lean(),
       Appointment.find({
         userId: auth.user.id,
         date: { $gte: todayStart, $lte: todayEnd },
@@ -42,6 +43,29 @@ export async function GET(request: Request) {
         .sort({ date: 1 })
         .limit(8)
         .lean(),
+      Appointment.find({
+        userId: auth.user.id,
+        status: "completed",
+        date: { $gte: subYears(now, 2) },
+      })
+        .select("clientId date finalPrice")
+        .sort({ date: 1 })
+        .lean(),
+      Payment.aggregate([
+        {
+          $match: {
+            userId: auth.user.id,
+            status: "paid",
+            confirmedAt: { $gte: monthStart },
+          },
+        },
+        { $group: { _id: null, total: { $sum: "$amount" } } },
+      ]),
+      Payment.countDocuments({
+        userId: auth.user.id,
+        status: "pending",
+        method: "cash",
+      }),
     ]);
 
     let totalClients = clients.length;
@@ -88,57 +112,12 @@ export async function GET(request: Request) {
     const churnRate =
       totalClients > 0 ? Math.round((lostClients / totalClients) * 1000) / 10 : 0;
 
-    const RETURN_GAP_MS = 30 * 24 * 60 * 60 * 1000;
-    const completedThisMonth = await Appointment.find({
-      userId: auth.user.id,
-      status: "completed",
-      date: { $gte: monthStart },
-    })
-      .select("clientId date finalPrice")
-      .lean();
-
-    let returningRevenue = 0;
-    let returningVisits = 0;
-
-    for (const appt of completedThisMonth) {
-      const prior = await Appointment.findOne({
-        userId: auth.user.id,
-        clientId: appt.clientId,
-        status: "completed",
-        date: { $lt: appt.date },
-      })
-        .sort({ date: -1 })
-        .select("date")
-        .lean();
-
-      const gap = prior
-        ? new Date(appt.date).getTime() - new Date(prior.date).getTime()
-        : RETURN_GAP_MS + 1;
-
-      if (gap > RETURN_GAP_MS) {
-        returningVisits++;
-        returningRevenue += appt.finalPrice ?? 0;
-      }
-    }
-
-    const paidRevenue = await Payment.aggregate([
-      {
-        $match: {
-          userId: auth.user.id,
-          status: "paid",
-          confirmedAt: { $gte: monthStart },
-        },
-      },
-      { $group: { _id: null, total: { $sum: "$amount" } } },
-    ]);
+    const { returningRevenue, returningVisits } = computeReturningMetrics(
+      monthStart,
+      allCompleted
+    );
 
     const estimatedRevenue = paidRevenue[0]?.total ?? 0;
-
-    const pendingCashCount = await Payment.countDocuments({
-      userId: auth.user.id,
-      status: "pending",
-      method: "cash",
-    });
 
     const response = NextResponse.json({
       totalClients,

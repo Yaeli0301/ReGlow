@@ -6,7 +6,7 @@ import { Referral } from "@/models/Referral";
 import { generateReferralCode, buildReferralLink } from "@/lib/referral";
 
 export async function GET(request: Request) {
-  const auth = await requireAuthFromRequest(request);
+  const auth = await requireAuthFromRequest(request, { loadDbUser: true });
   if (auth instanceof NextResponse) return auth;
 
   await connectDB();

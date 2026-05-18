@@ -5,7 +5,12 @@ import Link from "next/link";
 import { format } from "date-fns";
 import { WhatsAppButton } from "@/components/clients/WhatsAppButton";
 import { WHATSAPP_TEMPLATES } from "@/lib/whatsapp";
-import { ReferralPanel } from "@/components/referral/ReferralPanel";
+import dynamic from "next/dynamic";
+
+const ReferralPanel = dynamic(
+  () => import("@/components/referral/ReferralPanel").then((m) => ({ default: m.ReferralPanel })),
+  { ssr: false, loading: () => null }
+);
 import { useT } from "@/contexts/LanguageContext";
 import { useHasSubscription } from "@/contexts/AppUserContext";
 import { parseJsonResponse } from "@/lib/client-api";
@@ -57,7 +62,7 @@ export default function DashboardPage() {
     setLoading(true);
     setLoadError(false);
 
-    fetch("/api/dashboard/stats", { cache: "no-store" })
+    fetch("/api/dashboard/stats")
       .then((res) => parseJsonResponse<DashboardStats>(res))
       .then((result) => {
         if (!result.ok) {

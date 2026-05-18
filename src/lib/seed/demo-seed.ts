@@ -13,6 +13,8 @@ import { logger } from "@/lib/logger";
 
 export const DEMO_OWNER_EMAIL = "demo@reglow.local";
 export const DEMO_OWNER_PASSWORD = "Demo1234!";
+export const DEMO_ADMIN_EMAIL = "admin@reglow.local";
+export const DEMO_ADMIN_PASSWORD = "Demo1234!";
 
 const DEMO_CLIENTS = [
   { name: "מיה כהן", phone: "0501111001" },
@@ -43,7 +45,21 @@ export async function seedDemoData(options: { force?: boolean } = {}): Promise<{
   password: string;
 }> {
   if (options.force) {
-    await User.deleteMany({ email: DEMO_OWNER_EMAIL });
+    await User.deleteMany({ email: { $in: [DEMO_OWNER_EMAIL, DEMO_ADMIN_EMAIL] } });
+  }
+
+  let adminUser = await User.findOne({ email: DEMO_ADMIN_EMAIL });
+  if (!adminUser) {
+    const adminHash = await bcrypt.hash(DEMO_ADMIN_PASSWORD, 10);
+    adminUser = await User.create({
+      email: DEMO_ADMIN_EMAIL,
+      password: adminHash,
+      businessName: "ReGlow Admin",
+      role: "admin",
+      subscriptionTier: "premium",
+      referralCode: `ADM${Date.now().toString(36).slice(-6)}`,
+    });
+    logger.info("Demo admin created", { email: DEMO_ADMIN_EMAIL });
   }
 
   let owner = await User.findOne({ email: DEMO_OWNER_EMAIL });

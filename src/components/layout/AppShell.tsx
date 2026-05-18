@@ -1,15 +1,24 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
+import { useAuth } from "@/hooks/useAuth";
 import type { SessionUser, SubscriptionTier } from "@/types";
 import { UpgradeBanner } from "./UpgradeBanner";
 import { LanguageSwitcher } from "@/components/ui/LanguageSwitcher";
 import { useT } from "@/contexts/LanguageContext";
 import { AppUserProvider } from "@/contexts/AppUserContext";
 import { hasActiveSubscription } from "@/lib/subscription";
-import { PendingCashPaymentsSlot } from "@/components/payments/PendingCashPaymentsSlot";
+import dynamic from "next/dynamic";
 import { DemoModeBanner } from "@/components/demo/DemoModeBanner";
+
+const PendingCashPaymentsSlot = dynamic(
+  () =>
+    import("@/components/payments/PendingCashPaymentsSlot").then((m) => ({
+      default: m.PendingCashPaymentsSlot,
+    })),
+  { ssr: false, loading: () => null }
+);
 import {
   IconCalendar,
   IconCard,
@@ -28,21 +37,46 @@ const TIER_LABELS: Record<SubscriptionTier, { he: string; en: string }> = {
   premium: { he: "Premium", en: "Premium" },
 };
 
-export function AppShell({ user, children }: { user: SessionUser; children: React.ReactNode }) {
+export function AppShell({
+  user,
+  children,
+  demoMode = false,
+  demoEmail,
+}: {
+  user: SessionUser;
+  children: React.ReactNode;
+  demoMode?: boolean;
+  demoEmail?: string;
+}) {
   return (
     <AppUserProvider user={user}>
-      <AppShellInner user={user}>{children}</AppShellInner>
+      <AppShellInner user={user} demoMode={demoMode} demoEmail={demoEmail}>
+        {children}
+      </AppShellInner>
     </AppUserProvider>
   );
 }
 
-function AppShellInner({ user, children }: { user: SessionUser; children: React.ReactNode }) {
+function AppShellInner({
+  user,
+  children,
+  demoMode,
+  demoEmail,
+}: {
+  user: SessionUser;
+  children: React.ReactNode;
+  demoMode?: boolean;
+  demoEmail?: string;
+}) {
   const pathname = usePathname();
-  const router = useRouter();
+  const { logout, roleLabel, welcomeLabel, isAdmin } = useAuth();
   const t = useT();
   const subscribed = hasActiveSubscription(user.subscriptionTier);
 
   const navItems = [
+    ...(isAdmin
+      ? [{ href: "/admin-dashboard", label: t("admin.dashboardTitle"), Icon: IconDashboard }]
+      : []),
     { href: "/dashboard", label: t("nav.dashboard"), Icon: IconDashboard },
     { href: "/appointments", label: t("nav.appointments"), Icon: IconCalendar, minTier: "pro" as const },
     { href: "/schedule", label: t("nav.schedule"), Icon: IconClock },
@@ -60,12 +94,6 @@ function AppShellInner({ user, children }: { user: SessionUser; children: React.
       : []),
     { href: "/billing", label: t("nav.billing"), Icon: IconCard, highlight: !subscribed },
   ];
-
-  async function handleLogout() {
-    await fetch("/api/auth/logout", { method: "POST" });
-    router.push("/login");
-    router.refresh();
-  }
 
   const initial = user.businessName?.charAt(0)?.toUpperCase() || "R";
   const tierLabel = TIER_LABELS[user.subscriptionTier];
@@ -138,10 +166,14 @@ function AppShellInner({ user, children }: { user: SessionUser; children: React.
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold text-white">{user.businessName}</p>
+                  <p className="truncate text-xs text-pink-200/80">{welcomeLabel}</p>
                   <p className="truncate text-xs text-pink-200/70">{user.email}</p>
                 </div>
               </div>
               <div className="mt-3 flex items-center justify-between gap-2">
+                <span className="rounded-full bg-white/15 px-2.5 py-0.5 text-[10px] font-bold text-pink-100 ring-1 ring-white/20">
+                  {roleLabel}
+                </span>
                 <span
                   className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
                     subscribed
@@ -165,7 +197,8 @@ function AppShellInner({ user, children }: { user: SessionUser; children: React.
             <div className="mt-3 space-y-2">
               <LanguageSwitcher className="w-full border-white/20 bg-white/10 [&_button]:text-white [&_button]:hover:bg-white/20" />
               <button
-                onClick={handleLogout}
+                type="button"
+                onClick={() => logout()}
                 className="flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium text-pink-100/90 transition hover:bg-white/10 hover:text-white"
               >
                 <IconLogout className="h-4 w-4" />
@@ -187,7 +220,18 @@ function AppShellInner({ user, children }: { user: SessionUser; children: React.
               </div>
               <span className="text-lg font-bold text-brand-700">ReGlow</span>
             </Link>
-            <LanguageSwitcher />
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => logout()}
+                className="flex items-center gap-1 rounded-lg bg-brand-50 px-2 py-1.5 text-[10px] font-semibold text-brand-700"
+                aria-label={t("nav.signOut")}
+              >
+                <IconLogout className="h-4 w-4" />
+                {t("nav.signOut")}
+              </button>
+              <LanguageSwitcher />
+            </div>
           </div>
           <nav className="flex gap-1 overflow-x-auto px-3 pb-3 scrollbar-hide">
             {navItems.map((item) => {
@@ -212,7 +256,7 @@ function AppShellInner({ user, children }: { user: SessionUser; children: React.
         </header>
 
         <div className="flex-1 p-4 lg:p-8">
-          <DemoModeBanner />
+          <DemoModeBanner demo={demoMode} demoEmail={demoEmail} />
           <UpgradeBanner tier={user.subscriptionTier} />
           <PendingCashPaymentsSlot />
           {children}

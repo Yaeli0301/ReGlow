@@ -4,7 +4,9 @@ import { z } from "zod";
 import { connectDB } from "@/lib/mongodb";
 import { User } from "@/models/User";
 import { Referral } from "@/models/Referral";
-import { buildSessionUser, signToken, setAuthCookie } from "@/lib/auth";
+import { buildSessionUser, signToken } from "@/lib/auth";
+import { jsonWithAuthCookie } from "@/lib/auth-cookie";
+import { authSuccessPayload } from "@/lib/auth-response";
 import { generateReferralCode, normalizeReferralCode } from "@/lib/referral";
 import { validateReferralForRegistration } from "@/lib/referral-rewards";
 import { getOrCreateWeeklySchedule } from "@/lib/availability";
@@ -84,13 +86,16 @@ export async function POST(request: Request) {
 
     const session = buildSessionUser(user);
     const token = signToken(session);
-    await setAuthCookie(token);
 
-    return NextResponse.json({
-      user: session,
-      message: "Account created successfully",
-      referralApplied: !!referrerId,
-    });
+    return jsonWithAuthCookie(
+      {
+        ...authSuccessPayload(session, token),
+        redirectTo: "/dashboard",
+        message: "Account created successfully",
+        referralApplied: !!referrerId,
+      },
+      token
+    );
   } catch (error) {
     console.error("Register error:", error);
     return NextResponse.json({ error: "Registration failed" }, { status: 500 });

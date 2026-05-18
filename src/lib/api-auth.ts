@@ -5,65 +5,74 @@ import { User, type IUser } from "@/models/User";
 import type { SessionUser, UserRole } from "@/types";
 import { hasActiveSubscription } from "@/lib/subscription";
 
-type AuthResult = { user: SessionUser; dbUser: IUser } | NextResponse;
+export type AuthOptions = { loadDbUser?: boolean };
 
-export async function requireAuth(): Promise<AuthResult> {
-  await connectDB();
+export type AuthResult = { user: SessionUser; dbUser?: IUser } | NextResponse;
 
-  let session = await getSession();
-
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const dbUser = await User.findById(session.id).select("-password");
-  if (!dbUser) {
-    return NextResponse.json({ error: "User not found" }, { status: 401 });
-  }
-
-  session = {
-    id: dbUser._id.toString(),
-    email: dbUser.email,
-    businessName: dbUser.businessName,
-    role: dbUser.role || "business",
-    subscriptionTier: dbUser.subscriptionTier,
-  };
-
-  return { user: session, dbUser };
-}
-
-export async function requireAuthFromRequest(request: Request): Promise<AuthResult> {
-  await connectDB();
-
+async function resolveSessionFromRequest(request: Request): Promise<SessionUser | null> {
   const authHeader = request.headers.get("authorization");
   const bearerToken = getTokenFromHeader(authHeader);
+  if (bearerToken) return verifyToken(bearerToken);
+  return getSession();
+}
 
-  let session: SessionUser | null = null;
-
-  if (bearerToken) {
-    session = verifyToken(bearerToken);
-  } else {
-    session = await getSession();
-  }
-
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const dbUser = await User.findById(session.id).select("-password");
+async function loadDbUser(session: SessionUser): Promise<IUser | NextResponse> {
+  const dbUser = await User.findById(session.id).select("-password").lean();
   if (!dbUser) {
     return NextResponse.json({ error: "User not found" }, { status: 401 });
   }
+  return dbUser as IUser;
+}
 
-  const user: SessionUser = {
+function sessionFromDbUser(dbUser: IUser): SessionUser {
+  return {
     id: dbUser._id.toString(),
     email: dbUser.email,
     businessName: dbUser.businessName,
     role: dbUser.role || "business",
     subscriptionTier: dbUser.subscriptionTier,
   };
+}
 
-  return { user, dbUser };
+/** Server actions / routes that need fresh DB fields (Stripe, referral). */
+export async function requireAuth(options?: AuthOptions): Promise<AuthResult> {
+  await connectDB();
+
+  const session = await getSession();
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (!options?.loadDbUser) {
+    return { user: session };
+  }
+
+  const dbUser = await loadDbUser(session);
+  if (dbUser instanceof NextResponse) return dbUser;
+
+  return { user: sessionFromDbUser(dbUser), dbUser };
+}
+
+/** Fast path: trust signed JWT. Pass `{ loadDbUser: true }` when DB fields are required. */
+export async function requireAuthFromRequest(
+  request: Request,
+  options?: AuthOptions
+): Promise<AuthResult> {
+  await connectDB();
+
+  const session = await resolveSessionFromRequest(request);
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (!options?.loadDbUser) {
+    return { user: session };
+  }
+
+  const dbUser = await loadDbUser(session);
+  if (dbUser instanceof NextResponse) return dbUser;
+
+  return { user: sessionFromDbUser(dbUser), dbUser };
 }
 
 export function requireRole(user: SessionUser, role: UserRole): NextResponse | null {

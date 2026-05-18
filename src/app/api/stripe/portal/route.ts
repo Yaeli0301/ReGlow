@@ -3,7 +3,7 @@ import { requireAuthFromRequest } from "@/lib/api-auth";
 import { createBillingPortalSession } from "@/lib/stripe";
 
 export async function POST(request: Request) {
-  const auth = await requireAuthFromRequest(request);
+  const auth = await requireAuthFromRequest(request, { loadDbUser: true });
   if (auth instanceof NextResponse) return auth;
 
   if (!auth.dbUser?.stripeCustomerId) {

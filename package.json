@@ -14,7 +14,8 @@
     "test:integration": "vitest run tests/integration",
     "test:watch": "vitest",
     "test:smoke": "node scripts/smoke-test.mjs",
-    "seed:demo": "npx tsx scripts/seed-demo.ts"
+    "seed:demo": "npx tsx scripts/seed-demo.ts",
+    "seed:users": "node scripts/ensure-demo-users.mjs"
   },
   "dependencies": {
     "@types/node": "^25.8.0",

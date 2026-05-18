@@ -9,7 +9,7 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: "2mb",
     },
-    optimizePackageImports: ["date-fns"],
+    optimizePackageImports: ["date-fns", "jose", "zod"],
   },
 };
 
