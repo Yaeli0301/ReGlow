@@ -2,6 +2,23 @@
 
 Production URL: **https://re-glow.vercel.app**
 
+> **לא צריך** `npx create-next-app --example with-mongodb` — זה מדריך לאפליקיה חדשה.  
+> **ReGlow כבר מחובר** ל-Mongoose; אחרי חיבור DB ב-Vercel Dashboard עשי רק את השלבים למטה.
+
+## אם חיברת MongoDB ב-Vercel (Integration)
+
+1. **Projects** — ודאי שהפרויקט `re-glow` מחובר למסד.
+2. מקומית:
+   ```bash
+   npx vercel link
+   vercel env pull
+   ```
+   זה יוצר/מעדכן `.env.local` עם `MONGODB_URI` מ-Vercel.
+3. `npm run dev` → http://localhost:3000
+4. בפרודקשן: **Redeploy** ב-Vercel אחרי שינוי env.
+
+ReGlow כולל כבר `attachDatabasePool` מ-`@vercel/functions` ב-`src/lib/mongodb.ts` (מומלץ ל-Vercel).
+
 ## 1. MongoDB Atlas (חובה לפני Vercel)
 
 1. [cloud.mongodb.com](https://cloud.mongodb.com) → **Network Access** → **Add IP** → `0.0.0.0/0`  
