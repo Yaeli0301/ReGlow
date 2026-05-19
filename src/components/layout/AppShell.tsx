@@ -11,6 +11,7 @@ import { AppUserProvider } from "@/contexts/AppUserContext";
 import { hasActiveSubscription } from "@/lib/subscription";
 import dynamic from "next/dynamic";
 import { DemoModeBanner } from "@/components/demo/DemoModeBanner";
+import { MaintenanceBanner } from "@/components/system/MaintenanceBanner";
 
 const PendingCashPaymentsSlot = dynamic(
   () =>
@@ -256,6 +257,7 @@ function AppShellInner({
         </header>
 
         <div className="flex-1 p-4 lg:p-8">
+          <MaintenanceBanner />
           <DemoModeBanner demo={demoMode} demoEmail={demoEmail} />
           <UpgradeBanner tier={user.subscriptionTier} />
           <PendingCashPaymentsSlot />

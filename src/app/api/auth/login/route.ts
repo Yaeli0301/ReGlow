@@ -9,6 +9,8 @@ import { authSuccessPayload } from "@/lib/auth-response";
 import { isDemoMode } from "@/lib/env";
 import { logger } from "@/lib/logger";
 import { trackEvent } from "@/lib/analytics/event-tracker";
+import { trackLoginFailure } from "@/lib/monitoring/telemetry";
+import { assertSystemReady } from "@/lib/system/system-guard";
 
 const schema = z.object({
   email: z.string().email(),
@@ -48,6 +50,9 @@ async function parseLoginBody(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const blocked = await assertSystemReady(new URL(request.url).pathname);
+    if (blocked) return blocked;
+
     const bodyResult = await parseLoginBody(request);
     if ("error" in bodyResult && bodyResult.error) return bodyResult.error;
     const { email, password } = bodyResult.data!;
@@ -71,6 +76,7 @@ export async function POST(request: Request) {
     const emailLower = email.toLowerCase().trim();
     const user = await User.findOne({ email: emailLower });
     if (!user) {
+      trackLoginFailure(emailLower);
       logger.info("Login attempt: user not found", { email: maskEmail(emailLower) });
       return NextResponse.json(
         { success: false, error: "אימייל או סיסמה שגויים", code: "INVALID_CREDENTIALS" },
@@ -80,6 +86,7 @@ export async function POST(request: Request) {
 
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) {
+      trackLoginFailure(emailLower);
       logger.warn("Login attempt: invalid password", { email: maskEmail(emailLower) });
       return NextResponse.json(
         { success: false, error: "אימייל או סיסמה שגויים", code: "INVALID_CREDENTIALS" },

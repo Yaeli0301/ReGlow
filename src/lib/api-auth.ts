@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
+import { assertSystemReady } from "@/lib/system/system-guard";
 import { buildSessionUser, getSession, getTokenFromHeader, verifyToken } from "@/lib/auth";
 import { User, type IUser } from "@/models/User";
 import type { SessionUser, UserRole } from "@/types";
@@ -39,6 +40,11 @@ function sessionFromDbUser(dbUser: IUser): SessionUser {
   });
 }
 
+async function guardRequest(request?: Request): Promise<NextResponse | null> {
+  if (!request) return null;
+  return assertSystemReady(new URL(request.url).pathname);
+}
+
 /** Server actions / routes that need fresh DB fields (Stripe, referral). */
 export async function requireAuth(options?: AuthOptions): Promise<AuthResult> {
   await connectDB();
@@ -66,6 +72,9 @@ export async function requireAuthFromRequest(
   request: Request,
   options?: AuthOptions
 ): Promise<AuthResult> {
+  const blocked = await guardRequest(request);
+  if (blocked) return blocked;
+
   await connectDB();
 
   const session = await resolveSessionFromRequest(request);

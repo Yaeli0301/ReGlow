@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { verifyTokenEdge } from "@/lib/jwt-edge";
+import { checkApiSystemGuard } from "@/middleware/system-guard";
 
 const COOKIE_NAME = "reglow_token";
 
@@ -74,6 +75,8 @@ export const config = {
     "/invoices/:path*",
     "/feedback/:path*",
     "/admin/:path*",
+    "/admin/system-health/:path*",
+    "/api/:path*",
     "/onboarding/:path*",
     "/login",
     "/register",

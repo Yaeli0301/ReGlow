@@ -4,6 +4,10 @@ import { runAllInsights } from "@/lib/analytics/insights-engine";
 import { renderInsightsDigest, renderSingleInsightAlert } from "@/lib/analytics/report-generator";
 import { sendEmail, getAdminEmail } from "@/lib/email";
 import { logger } from "@/lib/logger";
+import {
+  evaluateOperationalAlerts,
+  sendOperationalAlerts,
+} from "@/lib/monitoring/alerts";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -18,7 +22,11 @@ export async function GET(request: Request) {
   try {
     await connectDB();
 
-    const result = await runAllInsights(new Date());
+    const [result, operationalAlerts] = await Promise.all([
+      runAllInsights(new Date()),
+      evaluateOperationalAlerts(),
+    ]);
+    await sendOperationalAlerts(operationalAlerts);
     const allNew = [
       ...result.daily.created,
       ...result.weekly.created,

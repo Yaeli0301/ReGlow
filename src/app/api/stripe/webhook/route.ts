@@ -9,6 +9,7 @@ import type { SubscriptionTier } from "@/types";
 import { processReferralReward, consumeReferralRewardMonth } from "@/lib/referral-rewards";
 import { logger } from "@/lib/logger";
 import { trackEvent } from "@/lib/analytics/event-tracker";
+import { trackStripeWebhookFailure } from "@/lib/monitoring/telemetry";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -186,6 +187,10 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, received: true });
   } catch (error) {
+    trackStripeWebhookFailure(
+      event.id,
+      error instanceof Error ? error.message : String(error)
+    );
     logger.error("Webhook handler error", {
       eventId: event.id,
       type: event.type,

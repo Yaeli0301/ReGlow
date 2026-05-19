@@ -68,6 +68,9 @@ export default function AdminDashboardPage() {
             <Link href="/admin-analytics">
               <Button>Analytics</Button>
             </Link>
+            <Link href="/admin/system-health">
+              <Button variant="secondary">בריאות מערכת</Button>
+            </Link>
             <Link href="/admin/debug">
               <Button variant="secondary">{t("admin.debugPanel")}</Button>
             </Link>

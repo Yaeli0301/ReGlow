@@ -1,6 +1,8 @@
 import mongoose from "mongoose";
-import { getMongoUriOrThrow, isDemoMode, shouldUseInMemoryMongo } from "@/lib/env";
-import { assertProductionEnv } from "@/lib/production-guard";
+import { getMongoUriOrThrow, shouldUseInMemoryMongo } from "@/lib/env";
+import { isDemo } from "@/lib/system/mode";
+import { assertEnvValid } from "@/lib/system/env-validator";
+import { assertDemoDatabaseIsolation } from "@/lib/system/mode";
 import { logger } from "@/lib/logger";
 
 interface MongooseCache {
@@ -59,10 +61,11 @@ async function attachVercelDatabasePool(): Promise<void> {
 export async function connectDB(): Promise<typeof mongoose> {
   if (cached.conn) return cached.conn;
 
-  assertProductionEnv();
+  assertEnvValid();
 
   if (!cached.promise) {
     const uri = await resolveUri();
+    assertDemoDatabaseIsolation(uri);
     const isVercel = Boolean(process.env.VERCEL);
     // Vercel-MongoDB integration URIs often omit the DB name (".../?retryWrites=...").
     // Force dbName so models land in the "reglow" database instead of "test".
@@ -80,9 +83,9 @@ export async function connectDB(): Promise<typeof mongoose> {
   try {
     cached.conn = await cached.promise;
     await attachVercelDatabasePool();
-    logger.info("Database connected", { mode: isDemoMode() ? "demo" : "production" });
+    logger.info("Database connected", { mode: isDemo() ? "demo" : "production" });
 
-    if (isDemoMode() && !global.demoSeeded) {
+    if (isDemo() && !global.demoSeeded) {
       const { ensureDemoSeeded } = await import("@/lib/seed/demo-seed");
       await ensureDemoSeeded();
       global.demoSeeded = true;
@@ -100,7 +103,7 @@ export async function connectDB(): Promise<typeof mongoose> {
 
 /** Drop all data and re-seed — demo mode only. */
 export async function resetDemoDatabase(): Promise<void> {
-  if (!isDemoMode()) {
+  if (!isDemo()) {
     throw new Error("resetDemoDatabase is only allowed in demo mode");
   }
   await connectDB();
