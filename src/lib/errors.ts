@@ -75,26 +75,46 @@ export function handleApiError(error: unknown, context?: string): NextResponse {
 
   if (error instanceof AppError) {
     return NextResponse.json(
-      { error: error.userMessage, code: error.code },
+      { success: false, error: error.userMessage, code: error.code },
       { status: error.status }
     );
   }
   if (error instanceof SchedulingConflictError) {
     return NextResponse.json(
-      { error: error.message, code: "CONFLICT" },
+      { success: false, error: error.message, code: "CONFLICT" },
       { status: 409 }
     );
   }
   if (error instanceof ZodError) {
     return NextResponse.json(
-      { error: toUserMessage(error), code: "VALIDATION_ERROR" },
+      { success: false, error: toUserMessage(error), code: "VALIDATION_ERROR" },
       { status: 400 }
     );
   }
 
   return NextResponse.json(
-    { error: toUserMessage(error), code: "INTERNAL_ERROR" },
+    { success: false, error: toUserMessage(error), code: "INTERNAL_ERROR" },
     { status: 500 }
+  );
+}
+
+/** Shorthand for `{ success: true, ...data }`. */
+export function apiSuccess<T extends Record<string, unknown>>(
+  data: T = {} as T,
+  init?: ResponseInit
+): NextResponse {
+  return NextResponse.json({ success: true, ...data }, init);
+}
+
+/** Shorthand for `{ success: false, error, code? }`. */
+export function apiError(
+  error: string,
+  status = 400,
+  code?: string
+): NextResponse {
+  return NextResponse.json(
+    { success: false, error, ...(code ? { code } : {}) },
+    { status }
   );
 }
 

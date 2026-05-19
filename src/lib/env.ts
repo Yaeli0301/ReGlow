@@ -16,10 +16,11 @@ export function canStartLandingDemo(): boolean {
 
 /** In-memory Mongo for local demo (set DEMO_USE_MEMORY=true when Atlas is unreachable). */
 export function shouldUseInMemoryMongo(): boolean {
-  if (process.env.RENDER) return false;
-  if (process.env.DEMO_USE_MEMORY === "true" && isDemoMode()) return true;
+  // Production guard: never use in-memory DB in production, regardless of other flags.
+  if (!isDemoMode()) return false;
+  if (process.env.VERCEL || process.env.RENDER) return false;
+  if (process.env.DEMO_USE_MEMORY === "true") return true;
   return (
-    isDemoMode() &&
     !process.env.MONGODB_URI_DEMO &&
     !process.env.MONGODB_URI &&
     !process.env.MONGODB_URI_STANDARD

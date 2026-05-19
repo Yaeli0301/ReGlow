@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { getMongoUriOrThrow, isDemoMode, shouldUseInMemoryMongo } from "@/lib/env";
+import { assertProductionEnv } from "@/lib/production-guard";
 import { logger } from "@/lib/logger";
 
 interface MongooseCache {
@@ -57,6 +58,8 @@ async function attachVercelDatabasePool(): Promise<void> {
 
 export async function connectDB(): Promise<typeof mongoose> {
   if (cached.conn) return cached.conn;
+
+  assertProductionEnv();
 
   if (!cached.promise) {
     const uri = await resolveUri();

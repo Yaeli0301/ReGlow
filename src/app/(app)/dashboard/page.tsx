@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { WhatsAppButton } from "@/components/clients/WhatsAppButton";
 import { WHATSAPP_TEMPLATES } from "@/lib/whatsapp";
@@ -48,6 +49,7 @@ interface DashboardStats {
 
 export default function DashboardPage() {
   const t = useT();
+  const router = useRouter();
   const hasSubscription = useHasSubscription();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -78,6 +80,20 @@ export default function DashboardPage() {
   useEffect(() => {
     loadStats();
   }, [loadStats]);
+
+  useEffect(() => {
+    if (
+      !loading &&
+      hasSubscription &&
+      stats &&
+      stats.totalClients === 0 &&
+      stats.upcomingAppointments.length === 0 &&
+      stats.todayAppointments.length === 0
+    ) {
+      const dismissed = typeof window !== "undefined" && localStorage.getItem("reglow_onboarding_done");
+      if (!dismissed) router.push("/onboarding");
+    }
+  }, [loading, hasSubscription, stats, router]);
 
   if (!hasSubscription) {
     return (

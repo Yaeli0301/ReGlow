@@ -5,6 +5,7 @@ import { requireAuthFromRequest } from "@/lib/api-auth";
 import { createCheckoutSession, getStripe } from "@/lib/stripe";
 import { getStripeConfigError, isStripeConfigured, validateTierPrice } from "@/lib/stripe-config";
 import { User } from "@/models/User";
+import { logger } from "@/lib/logger";
 import type { SubscriptionTier } from "@/types";
 
 const schema = z.object({
@@ -67,16 +68,30 @@ export async function POST(request: Request) {
       useReferralReward,
     });
 
+    logger.info("Stripe checkout created", {
+      userId: auth.user.id,
+      tier,
+      useReferralReward,
+      sessionId: session.id,
+    });
+
     return NextResponse.json({
+      success: true,
       url: session.url,
       usedReferralReward: useReferralReward,
     });
   } catch (error) {
-    console.error("Checkout error:", error);
+    logger.error("Checkout error", {
+      userId: auth.user.id,
+      err: error instanceof Error ? error.message : String(error),
+    });
     const message =
       error instanceof Error && error.message.includes("No such price")
         ? "מזהה מחיר Stripe לא תקין — בדקי את STRIPE_PRICE_* ב-.env.local"
         : "יצירת תשלום נכשלה. נסי שוב או פני לתמיכה.";
-    return NextResponse.json({ error: message, code: "CHECKOUT_FAILED" }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: message, code: "CHECKOUT_FAILED" },
+      { status: 500 }
+    );
   }
 }

@@ -10,6 +10,7 @@ import { upsertClientByPhone } from "@/lib/client-service";
 import { createValidatedAppointment } from "@/lib/appointment-create";
 import { resetClientRetention } from "@/lib/retention-engine";
 import { SchedulingConflictError } from "@/lib/scheduling";
+import { logger } from "@/lib/logger";
 
 const baseFields = {
   date: z.string(),
@@ -44,6 +45,8 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const from = searchParams.get("from");
   const to = searchParams.get("to");
+  const limit = Math.min(Math.max(parseInt(searchParams.get("limit") || "500", 10), 1), 1000);
+  const skip = Math.max(parseInt(searchParams.get("skip") || "0", 10), 0);
 
   const query: Record<string, unknown> = { userId: auth.user.id };
 
@@ -56,6 +59,8 @@ export async function GET(request: Request) {
   const appointments = await Appointment.find(query)
     .populate("clientId", "name phone optIn")
     .sort({ date: 1 })
+    .skip(skip)
+    .limit(limit)
     .lean();
 
   const serialized = appointments.map((a) => {
@@ -153,9 +158,21 @@ export async function POST(request: Request) {
       await resetClientRetention(client._id.toString());
     }
 
-    return NextResponse.json({ appointment }, { status: 201 });
+    logger.info("Appointment created", {
+      userId: auth.user.id,
+      appointmentId: (appointment as { _id?: { toString(): string } })?._id?.toString(),
+      status: resolvedStatus,
+    });
+
+    return NextResponse.json({ success: true, appointment }, { status: 201 });
   } catch (error) {
-    console.error("Create appointment error:", error);
-    return NextResponse.json({ error: "Failed to create appointment" }, { status: 500 });
+    logger.error("Create appointment error", {
+      userId: auth.user.id,
+      err: error instanceof Error ? error.message : String(error),
+    });
+    return NextResponse.json(
+      { success: false, error: "Failed to create appointment", code: "APPOINTMENT_CREATE_FAILED" },
+      { status: 500 }
+    );
   }
 }

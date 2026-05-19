@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { connectDB } from "@/lib/mongodb";
 import { User } from "@/models/User";
-import { buildSessionUser, signToken } from "@/lib/auth";
+import { buildSessionUser, maskEmail, signToken } from "@/lib/auth";
 import { jsonWithAuthCookie } from "@/lib/auth-cookie";
 import { authSuccessPayload } from "@/lib/auth-response";
 import { isDemoMode } from "@/lib/env";
@@ -67,23 +67,31 @@ export async function POST(request: Request) {
       );
     }
 
-    const user = await User.findOne({ email: email.toLowerCase().trim() });
+    const emailLower = email.toLowerCase().trim();
+    const user = await User.findOne({ email: emailLower });
     if (!user) {
+      logger.info("Login attempt: user not found", { email: maskEmail(emailLower) });
       return NextResponse.json(
-        { error: "אימייל או סיסמה שגויים", code: "INVALID_CREDENTIALS" },
+        { success: false, error: "אימייל או סיסמה שגויים", code: "INVALID_CREDENTIALS" },
         { status: 401 }
       );
     }
 
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) {
+      logger.warn("Login attempt: invalid password", { email: maskEmail(emailLower) });
       return NextResponse.json(
-        { error: "אימייל או סיסמה שגויים", code: "INVALID_CREDENTIALS" },
+        { success: false, error: "אימייל או סיסמה שגויים", code: "INVALID_CREDENTIALS" },
         { status: 401 }
       );
     }
 
     const session = buildSessionUser(user);
+    logger.info("User logged in", {
+      userId: session.id,
+      role: session.role,
+      tier: session.subscriptionTier,
+    });
     let token: string;
     try {
       token = signToken(session);

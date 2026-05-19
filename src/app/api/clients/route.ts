@@ -22,13 +22,18 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const status = searchParams.get("status");
+  const limit = Math.min(Math.max(parseInt(searchParams.get("limit") || "200", 10), 1), 500);
+  const skip = Math.max(parseInt(searchParams.get("skip") || "0", 10), 0);
 
   const query: Record<string, unknown> = { userId: auth.user.id };
   if (status && ["active", "atRisk", "lost"].includes(status)) {
     query.status = status;
   }
 
-  const clients = await Client.find(query).sort({ updatedAt: -1 }).lean();
+  const [clients, total] = await Promise.all([
+    Client.find(query).sort({ updatedAt: -1 }).skip(skip).limit(limit).lean(),
+    Client.countDocuments(query),
+  ]);
 
   const enriched = clients.map((c) => ({
     ...c,
@@ -37,7 +42,7 @@ export async function GET(request: Request) {
     status: computeClientStatus(c.lastVisitDate),
   }));
 
-  return NextResponse.json({ clients: enriched });
+  return NextResponse.json({ clients: enriched, total, limit, skip });
 }
 
 export async function POST(request: Request) {

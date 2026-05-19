@@ -7,6 +7,7 @@ import { Appointment } from "@/models/Appointment";
 import { Client } from "@/models/Client";
 import { User } from "@/models/User";
 import { buildCancellationWhatsApp } from "@/lib/notifications";
+import { logger } from "@/lib/logger";
 
 const schema = z.object({
   reason: z.string().optional(),
@@ -38,6 +39,12 @@ export async function POST(
   appointment.canceledAt = new Date();
   appointment.cancelReason = parsed.success ? parsed.data.reason : undefined;
   await appointment.save();
+
+  logger.info("Appointment canceled", {
+    userId: auth.user.id,
+    appointmentId: id,
+    hasReason: Boolean(appointment.cancelReason),
+  });
 
   let notification = null;
   if (parsed.success && parsed.data.notifyClient) {

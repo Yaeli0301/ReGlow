@@ -17,6 +17,7 @@ const protectedPaths = [
   "/invoices",
   "/feedback",
   "/admin",
+  "/onboarding",
 ];
 
 const adminOnlyPrefixes = ["/admin-dashboard", "/admin"];
@@ -71,6 +72,7 @@ export const config = {
     "/invoices/:path*",
     "/feedback/:path*",
     "/admin/:path*",
+    "/onboarding/:path*",
     "/login",
     "/register",
   ],

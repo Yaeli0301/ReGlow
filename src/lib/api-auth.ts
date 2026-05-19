@@ -19,7 +19,10 @@ async function resolveSessionFromRequest(request: Request): Promise<SessionUser 
 async function loadDbUser(session: SessionUser): Promise<IUser | NextResponse> {
   const dbUser = await User.findById(session.id).select("-password").lean();
   if (!dbUser) {
-    return NextResponse.json({ error: "User not found" }, { status: 401 });
+    return NextResponse.json(
+      { success: false, error: "User not found", code: "USER_NOT_FOUND" },
+      { status: 401 }
+    );
   }
   return dbUser as IUser;
 }
@@ -40,7 +43,10 @@ export async function requireAuth(options?: AuthOptions): Promise<AuthResult> {
 
   const session = await getSession();
   if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json(
+      { success: false, error: "Unauthorized", code: "UNAUTHORIZED" },
+      { status: 401 }
+    );
   }
 
   if (!options?.loadDbUser) {
@@ -62,7 +68,10 @@ export async function requireAuthFromRequest(
 
   const session = await resolveSessionFromRequest(request);
   if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json(
+      { success: false, error: "Unauthorized", code: "UNAUTHORIZED" },
+      { status: 401 }
+    );
   }
 
   if (!options?.loadDbUser) {
@@ -77,7 +86,10 @@ export async function requireAuthFromRequest(
 
 export function requireRole(user: SessionUser, role: UserRole): NextResponse | null {
   if (user.role !== role) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    return NextResponse.json(
+      { success: false, error: "Forbidden", code: "FORBIDDEN" },
+      { status: 403 }
+    );
   }
   return null;
 }
@@ -85,7 +97,7 @@ export function requireRole(user: SessionUser, role: UserRole): NextResponse | n
 export function requireSubscription(user: SessionUser): NextResponse | null {
   if (!hasActiveSubscription(user.subscriptionTier)) {
     return NextResponse.json(
-      { error: "Active subscription required", code: "SUBSCRIPTION_REQUIRED" },
+      { success: false, error: "Active subscription required", code: "SUBSCRIPTION_REQUIRED" },
       { status: 403 }
     );
   }

@@ -4,9 +4,10 @@ import { z } from "zod";
 import { connectDB } from "@/lib/mongodb";
 import { User } from "@/models/User";
 import { Referral } from "@/models/Referral";
-import { buildSessionUser, signToken } from "@/lib/auth";
+import { buildSessionUser, maskEmail, signToken } from "@/lib/auth";
 import { jsonWithAuthCookie } from "@/lib/auth-cookie";
 import { authSuccessPayload } from "@/lib/auth-response";
+import { logger } from "@/lib/logger";
 import { generateReferralCode, normalizeReferralCode } from "@/lib/referral";
 import { validateReferralForRegistration } from "@/lib/referral-rewards";
 import { getOrCreateWeeklySchedule } from "@/lib/availability";
@@ -69,8 +70,15 @@ export async function POST(request: Request) {
       password: hashed,
       businessName,
       subscriptionTier: "none",
+      role: "business",
       referralCode: code,
       referredBy,
+    });
+
+    logger.info("User registered", {
+      userId: user._id.toString(),
+      email: maskEmail(emailLower),
+      hasReferrer: Boolean(referrerId),
     });
 
     await getOrCreateWeeklySchedule(user._id.toString());
@@ -90,14 +98,19 @@ export async function POST(request: Request) {
     return jsonWithAuthCookie(
       {
         ...authSuccessPayload(session, token),
-        redirectTo: "/dashboard",
+        redirectTo: "/onboarding",
         message: "Account created successfully",
         referralApplied: !!referrerId,
       },
       token
     );
   } catch (error) {
-    console.error("Register error:", error);
-    return NextResponse.json({ error: "Registration failed" }, { status: 500 });
+    logger.error("Register error", {
+      err: error instanceof Error ? error.message : String(error),
+    });
+    return NextResponse.json(
+      { success: false, error: "Registration failed", code: "REGISTER_FAILED" },
+      { status: 500 }
+    );
   }
 }
