@@ -9,6 +9,24 @@ interface SeriesPoint {
   value: number;
 }
 
+type InsightType = "alert" | "insight" | "recommendation";
+type InsightSeverity = "low" | "medium" | "high";
+type InsightPeriod = "daily" | "weekly" | "monthly";
+
+interface InsightItem {
+  _id: string;
+  type: InsightType;
+  severity: InsightSeverity;
+  title: string;
+  message: string;
+  metric: string;
+  delta?: number;
+  period: InsightPeriod;
+  recommendation?: string;
+  resolved: boolean;
+  createdAt: string;
+}
+
 interface AnalyticsData {
   generatedAt: string;
   daily: {
@@ -66,6 +84,41 @@ export default function AdminAnalyticsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [days, setDays] = useState(14);
+  const [insights, setInsights] = useState<InsightItem[]>([]);
+  const [insightsLoading, setInsightsLoading] = useState(true);
+  const [insightFilter, setInsightFilter] = useState<{
+    period: "all" | InsightPeriod;
+    type: "all" | InsightType;
+  }>({ period: "all", type: "all" });
+
+  const loadInsights = useCallback(async () => {
+    setInsightsLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (insightFilter.period !== "all") params.set("period", insightFilter.period);
+      if (insightFilter.type !== "all") params.set("type", insightFilter.type);
+      const res = await fetch(`/api/admin/insights?${params}`, { credentials: "include" });
+      const result = await parseJsonResponse<{ items: InsightItem[] }>(res);
+      if (result.ok) setInsights(result.data.items || []);
+    } finally {
+      setInsightsLoading(false);
+    }
+  }, [insightFilter]);
+
+  const resolveInsightAction = useCallback(
+    async (id: string) => {
+      const res = await fetch(`/api/admin/insights/${id}`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ resolved: true }),
+      });
+      if (res.ok) {
+        setInsights((prev) => prev.filter((i) => i._id !== id));
+      }
+    },
+    []
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -90,6 +143,10 @@ export default function AdminAnalyticsPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    loadInsights();
+  }, [loadInsights]);
 
   if (loading && !data) {
     return <AnalyticsSkeleton />;
@@ -138,7 +195,7 @@ export default function AdminAnalyticsPage() {
 
       {data.anomalies.length > 0 && (
         <div className="card border-amber-200 bg-amber-50/50">
-          <h2 className="font-semibold text-amber-700">התראות</h2>
+          <h2 className="font-semibold text-amber-700">התראות מערכת</h2>
           <ul className="mt-3 space-y-2">
             {data.anomalies.map((a) => (
               <li
@@ -158,6 +215,15 @@ export default function AdminAnalyticsPage() {
           </ul>
         </div>
       )}
+
+      <InsightsSection
+        items={insights}
+        loading={insightsLoading}
+        filter={insightFilter}
+        setFilter={setInsightFilter}
+        onResolve={resolveInsightAction}
+      />
+
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Stat label="משתמשות פעילות היום" value={data.daily.activeUsers} accent />
@@ -357,6 +423,160 @@ function Sparkline({ series, color }: { series: SeriesPoint[]; color: string }) 
       <path d={areaPath} fill={color} fillOpacity="0.1" />
       <path d={path} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" />
     </svg>
+  );
+}
+
+/* ---------------------------------------------------------------------------
+ * Auto-Insights section
+ * ------------------------------------------------------------------------- */
+
+const TYPE_META: Record<
+  InsightType,
+  { label: string; cardBg: string; border: string; badge: string }
+> = {
+  alert: {
+    label: "התראה",
+    cardBg: "bg-red-50/50",
+    border: "border-red-200",
+    badge: "bg-red-100 text-red-700",
+  },
+  insight: {
+    label: "תובנה",
+    cardBg: "bg-blue-50/50",
+    border: "border-blue-200",
+    badge: "bg-blue-100 text-blue-700",
+  },
+  recommendation: {
+    label: "המלצה",
+    cardBg: "bg-emerald-50/50",
+    border: "border-emerald-200",
+    badge: "bg-emerald-100 text-emerald-700",
+  },
+};
+
+const SEVERITY_META: Record<InsightSeverity, { label: string; badge: string }> = {
+  high: { label: "דחוף", badge: "bg-red-600 text-white" },
+  medium: { label: "בינוני", badge: "bg-amber-500 text-white" },
+  low: { label: "נמוך", badge: "bg-gray-400 text-white" },
+};
+
+const PERIOD_LABEL: Record<InsightPeriod, string> = {
+  daily: "יומי",
+  weekly: "שבועי",
+  monthly: "חודשי",
+};
+
+function InsightsSection({
+  items,
+  loading,
+  filter,
+  setFilter,
+  onResolve,
+}: {
+  items: InsightItem[];
+  loading: boolean;
+  filter: { period: "all" | InsightPeriod; type: "all" | InsightType };
+  setFilter: (f: { period: "all" | InsightPeriod; type: "all" | InsightType }) => void;
+  onResolve: (id: string) => void;
+}) {
+  return (
+    <section className="card">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-semibold">Auto Insights</h2>
+          <p className="text-xs text-gray-500">
+            המערכת מנתחת את הנתונים אוטומטית ומציעה פעולות
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <select
+            className="input w-32"
+            value={filter.period}
+            onChange={(e) =>
+              setFilter({ ...filter, period: e.target.value as typeof filter.period })
+            }
+          >
+            <option value="all">כל התקופות</option>
+            <option value="daily">{PERIOD_LABEL.daily}</option>
+            <option value="weekly">{PERIOD_LABEL.weekly}</option>
+            <option value="monthly">{PERIOD_LABEL.monthly}</option>
+          </select>
+          <select
+            className="input w-32"
+            value={filter.type}
+            onChange={(e) =>
+              setFilter({ ...filter, type: e.target.value as typeof filter.type })
+            }
+          >
+            <option value="all">כל הסוגים</option>
+            <option value="alert">{TYPE_META.alert.label}</option>
+            <option value="insight">{TYPE_META.insight.label}</option>
+            <option value="recommendation">{TYPE_META.recommendation.label}</option>
+          </select>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="mt-4 space-y-2">
+          {[0, 1].map((i) => (
+            <div key={i} className="h-20 animate-pulse rounded-xl bg-gray-100" />
+          ))}
+        </div>
+      ) : items.length === 0 ? (
+        <p className="mt-4 text-sm text-gray-500">
+          אין תובנות חדשות — המערכת תייצר תובנות אוטומטית בהרצת ה-cron הקרובה
+        </p>
+      ) : (
+        <ul className="mt-4 space-y-3">
+          {items.map((i) => {
+            const meta = TYPE_META[i.type];
+            const sev = SEVERITY_META[i.severity];
+            return (
+              <li
+                key={i._id}
+                className={`rounded-xl border p-4 ${meta.cardBg} ${meta.border}`}
+              >
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span
+                      className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${meta.badge}`}
+                    >
+                      {meta.label}
+                    </span>
+                    <span
+                      className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${sev.badge}`}
+                    >
+                      {sev.label}
+                    </span>
+                    <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs text-gray-600">
+                      {PERIOD_LABEL[i.period]}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => onResolve(i._id)}
+                    className="text-xs text-gray-500 hover:text-gray-700 hover:underline"
+                  >
+                    סמני כטופל ✓
+                  </button>
+                </div>
+                <h3 className="mt-3 font-semibold text-gray-900">{i.title}</h3>
+                <p className="mt-1 text-sm text-gray-700">{i.message}</p>
+                {i.recommendation && (
+                  <div className="mt-3 rounded-lg bg-white/70 p-3 text-sm">
+                    <strong className="text-gray-900">פעולה מוצעת: </strong>
+                    <span className="text-gray-700">{i.recommendation}</span>
+                  </div>
+                )}
+                <div className="mt-2 text-xs text-gray-400">
+                  {new Date(i.createdAt).toLocaleString("he-IL")}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
   );
 }
 

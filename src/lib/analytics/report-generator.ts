@@ -5,6 +5,7 @@
 
 import type { DailyMetrics, WeeklyMetrics, MonthlyMetrics } from "@/lib/analytics/metrics-service";
 import type { Alert } from "@/lib/analytics/anomaly-detector";
+import type { IInsight } from "@/models/Insight";
 
 interface DailyReportData {
   metrics: DailyMetrics;
@@ -170,4 +171,84 @@ function escapeHtml(s: string): string {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+/* ---------------------------------------------------------------------------
+ * INSIGHTS DIGEST — used by the generate-insights cron
+ * ------------------------------------------------------------------------- */
+
+interface InsightLike {
+  type: IInsight["type"];
+  severity: IInsight["severity"];
+  title: string;
+  message: string;
+  recommendation?: string;
+  metric: string;
+  period: IInsight["period"];
+}
+
+const TYPE_COLOR: Record<IInsight["type"], { bg: string; text: string; label: string }> = {
+  alert: { bg: "#fee2e2", text: "#991b1b", label: "התראה" },
+  insight: { bg: "#dbeafe", text: "#1e40af", label: "תובנה" },
+  recommendation: { bg: "#dcfce7", text: "#166534", label: "המלצה" },
+};
+
+function renderInsightCard(i: InsightLike): string {
+  const c = TYPE_COLOR[i.type];
+  return `<div class="card" style="border-right:4px solid ${c.text}">
+    <span style="display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:${c.bg};color:${c.text}">${c.label}</span>
+    <div style="font-weight:700;margin-top:8px;color:#0f172a">${escapeHtml(i.title)}</div>
+    <div style="margin-top:4px;color:#374151;font-size:14px">${escapeHtml(i.message)}</div>
+    ${
+      i.recommendation
+        ? `<div style="margin-top:10px;padding:8px;border-radius:8px;background:#f8fafc;font-size:13px"><strong>פעולה מוצעת:</strong> ${escapeHtml(i.recommendation)}</div>`
+        : ""
+    }
+  </div>`;
+}
+
+export function renderInsightsDigest(insights: InsightLike[]): {
+  subject: string;
+  html: string;
+} {
+  const highCount = insights.filter((i) => i.severity === "high").length;
+  const body = `
+    <h1 class="h1">תובנות חדשות — ReGlow</h1>
+    <p class="muted">${new Date().toLocaleDateString("he-IL", { day: "numeric", month: "long", year: "numeric" })}</p>
+
+    ${
+      highCount > 0
+        ? `<div class="alert alert-critical"><strong>${highCount} תובנות בעדיפות גבוהה דורשות תשומת לב</strong></div>`
+        : ""
+    }
+
+    ${insights.length === 0 ? `<p class="muted">אין תובנות חדשות.</p>` : insights.map(renderInsightCard).join("")}
+
+    <div class="footer">
+      <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://re-glow-vhp6.vercel.app"}/admin-analytics">פתחי את לוח התובנות המלא</a><br/>
+      ReGlow Auto-Insights · ${new Date().getFullYear()}
+    </div>
+  `;
+  return {
+    subject: `ReGlow · ${insights.length} תובנות חדשות${highCount > 0 ? ` (${highCount} דחופות)` : ""}`,
+    html: shell("ReGlow Insights", body),
+  };
+}
+
+export function renderSingleInsightAlert(i: InsightLike): {
+  subject: string;
+  html: string;
+} {
+  const body = `
+    <h1 class="h1">⚠ ${escapeHtml(i.title)}</h1>
+    <p class="muted">התראה דחופה — דורשת תשומת לב מיידית</p>
+    ${renderInsightCard(i)}
+    <div class="footer">
+      <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://re-glow-vhp6.vercel.app"}/admin-analytics">פתחי דאשבורד</a>
+    </div>
+  `;
+  return {
+    subject: `ReGlow ⚠ ${i.title}`,
+    html: shell("ReGlow Alert", body),
+  };
 }
