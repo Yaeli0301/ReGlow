@@ -2,7 +2,7 @@
  * Strict environment mode helpers + demo/production isolation.
  */
 
-import { resolveDemoMongoEnv, sanitizeMongoUri } from "@/lib/env";
+import { getDemoMongoEnvStatus, resolveDemoMongoEnv, sanitizeMongoUri } from "@/lib/env";
 
 export type AppMode = "production" | "demo" | "development";
 
@@ -53,6 +53,10 @@ export function assertDemoDatabaseIsolation(uri: string): void {
   // Hosted demo: must use separate demo URI or explicit opt-in
   if ((process.env.VERCEL || process.env.RENDER) && prodUri && uri === prodUri) {
     if (process.env.ALLOW_DEMO_ON_PROD_DB !== "true" && !validDemo) {
+      const invalid = getDemoMongoEnvStatus();
+      if (invalid.invalidKeys.length > 0 && invalid.hint) {
+        throw new Error(invalid.hint);
+      }
       throw new Error(
         "Demo mode cannot use production MONGODB_URI on hosted deploy. Set MONGODB_URI_DEMO to a valid mongodb+srv:// URI or ALLOW_DEMO_ON_PROD_DB=true"
       );

@@ -140,14 +140,30 @@ export function getMongoUriOrThrow(): string {
     const demo = resolveDemoMongoEnv();
     if (demo) return demo.uri;
 
+    const status = getDemoMongoEnvStatus();
+    const hosted = Boolean(process.env.VERCEL || process.env.RENDER);
+
+    // MONGODB_URI_DEMO exists but is not a real URI — do not fall back to production DB.
+    if (status.invalidKeys.length > 0) {
+      throw new Error(
+        `${status.hint} — ב-Vercel: מחקי את הערך הישן והדביקי URI מלא מ-Atlas (Connect → Drivers).`
+      );
+    }
+
     const fallback = sanitizeMongoUri(
       process.env.MONGODB_URI_STANDARD?.trim() ||
         process.env.MONGODB_URI?.trim() ||
         ""
     );
-    if (isValidMongoUri(fallback)) return fallback;
+    if (isValidMongoUri(fallback)) {
+      if (hosted && process.env.ALLOW_DEMO_ON_PROD_DB !== "true") {
+        throw new Error(
+          "Demo on Vercel needs MONGODB_URI_DEMO — set a valid mongodb+srv:// URI (separate demo database)."
+        );
+      }
+      return fallback;
+    }
 
-    const status = getDemoMongoEnvStatus();
     throw new Error(
       status.hint ??
         "Demo mode: set MONGODB_URI_DEMO to mongodb+srv://USER:PASS@CLUSTER.mongodb.net/reglow"
