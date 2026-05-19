@@ -14,6 +14,33 @@ export function canStartLandingDemo(): boolean {
   return isDemoMode() || process.env.ENABLE_LANDING_DEMO === "true";
 }
 
+/** Vercel Atlas integration may expose MONGODB_URI_DEMO_MONGODB_URI when the storage prefix is MONGODB_URI_DEMO. */
+const DEMO_MONGO_ENV_KEYS = [
+  "MONGODB_URI_DEMO",
+  "MONGODB_URI_DEMO_MONGODB_URI",
+] as const;
+
+export function getDemoMongoEnvKeysPresent(): string[] {
+  return DEMO_MONGO_ENV_KEYS.filter((key) => Boolean(process.env[key]?.trim()));
+}
+
+export function resolveDemoMongoEnv(): { uri: string; key: string } | null {
+  for (const key of DEMO_MONGO_ENV_KEYS) {
+    const uri = process.env[key]?.trim();
+    if (uri) return { uri, key };
+  }
+  return null;
+}
+
+/** Separate demo DB for landing demos in production (Vercel). */
+export function getLandingDemoMongoUri(): string | null {
+  return resolveDemoMongoEnv()?.uri ?? null;
+}
+
+export function shouldUseLandingDemoDatabase(): boolean {
+  return canStartLandingDemo() && Boolean(getLandingDemoMongoUri());
+}
+
 /** In-memory Mongo for local demo (set DEMO_USE_MEMORY=true when Atlas is unreachable). */
 export function shouldUseInMemoryMongo(): boolean {
   // Production guard: never use in-memory DB in production, regardless of other flags.
@@ -21,7 +48,7 @@ export function shouldUseInMemoryMongo(): boolean {
   if (process.env.VERCEL || process.env.RENDER) return false;
   if (process.env.DEMO_USE_MEMORY === "true") return true;
   return (
-    !process.env.MONGODB_URI_DEMO &&
+    !resolveDemoMongoEnv() &&
     !process.env.MONGODB_URI &&
     !process.env.MONGODB_URI_STANDARD
   );
@@ -36,8 +63,9 @@ export function getMongoUriOrThrow(): string {
     return uri;
   }
   if (isDemoMode()) {
+    const demo = resolveDemoMongoEnv();
     const uri =
-      process.env.MONGODB_URI_DEMO ||
+      demo?.uri ||
       process.env.MONGODB_URI_STANDARD ||
       process.env.MONGODB_URI;
     if (!uri) {

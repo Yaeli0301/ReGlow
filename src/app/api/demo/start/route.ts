@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { connectDB } from "@/lib/mongodb";
-import { canStartLandingDemo } from "@/lib/env";
+import { connectDB, connectLandingDemoDB } from "@/lib/mongodb";
+import { canStartLandingDemo, shouldUseLandingDemoDatabase } from "@/lib/env";
 import { User } from "@/models/User";
 import { buildSessionUser, signToken, setAuthCookie } from "@/lib/auth";
 import { authSuccessPayload } from "@/lib/auth-response";
@@ -27,7 +27,11 @@ export async function POST(request: Request) {
     const parsed = schema.safeParse(await request.json().catch(() => ({})));
     const plan: SubscriptionTier = parsed.success ? parsed.data.plan : "pro";
 
-    await connectDB();
+    if (shouldUseLandingDemoDatabase()) {
+      await connectLandingDemoDB();
+    } else {
+      await connectDB();
+    }
     await ensureDemoSeeded();
 
     const user = await User.findOne({ email: DEMO_OWNER_EMAIL });
@@ -52,6 +56,23 @@ export async function POST(request: Request) {
       redirectTo: "/dashboard",
     });
   } catch (error) {
+    if (
+      error instanceof Error &&
+      /MONGODB_URI_DEMO|Demo mode:|Database connection|ECONNREFUSED|querySrv/i.test(
+        error.message
+      )
+    ) {
+      return handleApiError(
+        new AppError({
+          code: "INTERNAL_ERROR",
+          message: error.message,
+          userMessage:
+            "בעיית חיבור למסד הנתונים של ההדגמה. ודאי ש-MONGODB_URI_DEMO מוגדר ב-Vercel ועשית redeploy.",
+          status: 503,
+        }),
+        "demo/start"
+      );
+    }
     return handleApiError(error, "demo/start");
   }
 }

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
-import { getEnvMode, isDemoMode, shouldUseInMemoryMongo } from "@/lib/env";
+import { getEnvMode, isDemoMode, shouldUseInMemoryMongo, getLandingDemoMongoUri } from "@/lib/env";
 import { isProductionReady, arePaymentsReady } from "@/lib/production-guard";
 import { getSystemState } from "@/lib/system/system-state";
 import { getAppMode } from "@/lib/system/mode";
@@ -31,7 +31,7 @@ export async function GET() {
 
   if (isDemoMode() && shouldUseInMemoryMongo()) {
     checks.env_mongo = "skipped";
-  } else if (process.env.MONGODB_URI || process.env.MONGODB_URI_DEMO) {
+  } else if (process.env.MONGODB_URI || getLandingDemoMongoUri()) {
     checks.env_mongo = "ok";
   }
 

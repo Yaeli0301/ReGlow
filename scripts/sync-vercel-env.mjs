@@ -10,6 +10,7 @@ import { execSync } from "child_process";
 const ENV_FILE = resolve(process.cwd(), ".env.local");
 const KEYS = [
   "MONGODB_URI",
+  "MONGODB_URI_DEMO",
   "MONGODB_URI_STANDARD",
   "JWT_SECRET",
   "ENV_MODE",

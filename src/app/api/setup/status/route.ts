@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getEnvMode } from "@/lib/env";
+import { getEnvMode, getLandingDemoMongoUri, getDemoMongoEnvKeysPresent } from "@/lib/env";
 import { isStripeConfigured } from "@/lib/stripe-config";
 import { isProductionReady, arePaymentsReady } from "@/lib/production-guard";
 
@@ -19,7 +19,9 @@ export async function GET() {
       ref: process.env.VERCEL_GIT_COMMIT_REF ?? null,
     },
     checks: {
-      mongo: Boolean(process.env.MONGODB_URI?.trim()),
+      mongo: Boolean(process.env.MONGODB_URI?.trim() || getLandingDemoMongoUri()),
+      mongoDemo: Boolean(getLandingDemoMongoUri()),
+      mongoDemoEnvKeys: getDemoMongoEnvKeysPresent(),
       jwt: jwt.length >= 32,
       cron: (process.env.CRON_SECRET?.trim() || "").length >= 16,
       stripe: isStripeConfigured(),
