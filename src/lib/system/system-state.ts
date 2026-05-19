@@ -2,29 +2,13 @@
  * Computes global system state: READY | DEGRADED | BLOCKED
  */
 
-import mongoose from "mongoose";
 import { validateEnv } from "@/lib/system/env-validator";
 import { getKillSwitchState } from "@/lib/system/kill-switch";
-import { isProduction, assertProductionNeverUsesInMemory } from "@/lib/system/mode";
+import { assertProductionNeverUsesInMemory } from "@/lib/system/mode";
 import { getMongoUriOrThrow } from "@/lib/env";
+import type { SystemStateSnapshot, SystemStateValue } from "@/lib/system/system-types";
 
-export type SystemStateValue = "READY" | "DEGRADED" | "BLOCKED";
-
-export interface SystemStateSnapshot {
-  state: SystemStateValue;
-  reason: string;
-  reasons: string[];
-  degraded: string[];
-  checks: {
-    env: boolean;
-    database: boolean;
-    killSwitch: boolean;
-    stripe: boolean;
-    cron: boolean;
-    email: boolean;
-  };
-  timestamp: string;
-}
+export type { SystemStateValue, SystemStateSnapshot } from "@/lib/system/system-types";
 
 let lastDbCheck: { ok: boolean; ms: number; at: number } | null = null;
 const DB_CHECK_CACHE_MS = 15_000;
@@ -40,6 +24,8 @@ async function checkDatabase(): Promise<{ ok: boolean; ms: number; error?: strin
     const uri = getMongoUriOrThrow();
     if (!uri) throw new Error("MONGODB_URI missing");
 
+    const mongoose = (await import("mongoose")).default;
+
     if (mongoose.connection.readyState === 1) {
       await mongoose.connection.db?.admin().ping();
       const ms = Date.now() - start;
@@ -47,7 +33,6 @@ async function checkDatabase(): Promise<{ ok: boolean; ms: number; error?: strin
       return { ok: true, ms };
     }
 
-    // Lazy connect for health checks only
     const { connectDB } = await import("@/lib/mongodb");
     await connectDB();
     const ms = Date.now() - start;
@@ -65,31 +50,7 @@ async function checkDatabase(): Promise<{ ok: boolean; ms: number; error?: strin
 }
 
 /** Sync env-only check (for Edge middleware — no DB). */
-export function getSystemStateSync(): Pick<SystemStateSnapshot, "state" | "reason" | "reasons"> {
-  const env = validateEnv();
-  const reasons: string[] = [];
-
-  if (env.blocking.length > 0) {
-    reasons.push(...env.blocking);
-  }
-
-  if (isProduction()) {
-    const jwt = process.env.JWT_SECRET?.trim();
-    if (!jwt || jwt.length < 32) reasons.push("JWT_SECRET missing or too short");
-    const mongo = process.env.MONGODB_URI?.trim();
-    if (!mongo) reasons.push("MONGODB_URI missing");
-  }
-
-  if (reasons.length > 0) {
-    return { state: "BLOCKED", reason: reasons[0], reasons };
-  }
-
-  if (env.degraded.length > 0) {
-    return { state: "DEGRADED", reason: env.degraded[0], reasons: env.degraded };
-  }
-
-  return { state: "READY", reason: "All core checks passed", reasons: [] };
-}
+export { getSystemStateSync } from "@/lib/system/system-state-sync";
 
 /** Full async state including DB + kill switch. */
 export async function getSystemState(opts?: {
@@ -101,9 +62,7 @@ export async function getSystemState(opts?: {
 
   let killSwitch = false;
   let dbOk = opts?.skipDb ?? false;
-  let dbMs = 0;
 
-  // Kill switch (requires DB — skip if DB not available yet)
   if (!opts?.skipDb) {
     try {
       const { connectDB } = await import("@/lib/mongodb");
@@ -125,7 +84,6 @@ export async function getSystemState(opts?: {
   if (!opts?.skipDb) {
     const db = await checkDatabase();
     dbOk = db.ok;
-    dbMs = db.ms;
     if (!db.ok) {
       reasons.push(db.error || "Database connection failed");
     }

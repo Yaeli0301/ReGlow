@@ -5,7 +5,7 @@
 
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { getSystemStateSync } from "@/lib/system/system-state";
+import { getSystemStateSync } from "@/lib/system/system-state-sync";
 
 /** Paths that stay reachable when system is BLOCKED. */
 const EXEMPT_PREFIXES = [
@@ -13,6 +13,9 @@ const EXEMPT_PREFIXES = [
   "/api/system/status",
   "/api/setup/status",
   "/api/admin/kill-switch",
+  "/api/demo/start",
+  "/api/demo/status",
+  "/api/demo/reset",
 ];
 
 export function isExemptFromSystemGuard(pathname: string): boolean {
