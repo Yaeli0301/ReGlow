@@ -1,13 +1,16 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { connectDB, connectLandingDemoDB } from "@/lib/mongodb";
-import { canStartLandingDemo, shouldUseLandingDemoDatabase } from "@/lib/env";
+import { connectDB } from "@/lib/mongodb";
+import { canStartLandingDemo, isDemoMode } from "@/lib/env";
+import { jsonWithAuthCookie } from "@/lib/auth-cookie";
 import { User } from "@/models/User";
-import { buildSessionUser, signToken, setAuthCookie } from "@/lib/auth";
+import { buildSessionUser, signToken } from "@/lib/auth";
 import { authSuccessPayload } from "@/lib/auth-response";
 import { DEMO_OWNER_EMAIL, ensureDemoSeeded } from "@/lib/seed/demo-seed";
 import { AppError, handleApiError } from "@/lib/errors";
 import type { SubscriptionTier } from "@/types";
+
+export const dynamic = "force-dynamic";
 
 const schema = z.object({
   plan: z.enum(["basic", "pro", "premium"]).default("pro"),
@@ -20,24 +23,20 @@ export async function POST(request: Request) {
         code: "DEMO_ONLY",
         message: "Demo start only in demo mode",
         userMessage:
-          "הדגמה לא פעילה — הגדירי ENV_MODE=demo בשרת ReGlow והפעילי מחדש",
+          "הדגמה לא פעילה — הגדירי ENABLE_LANDING_DEMO=true ב-Vercel",
       });
     }
 
     const parsed = schema.safeParse(await request.json().catch(() => ({})));
     const plan: SubscriptionTier = parsed.success ? parsed.data.plan : "pro";
 
-    if (shouldUseLandingDemoDatabase()) {
-      await connectLandingDemoDB();
-    } else {
-      await connectDB();
-    }
+    await connectDB();
     await ensureDemoSeeded();
 
     const user = await User.findOne({ email: DEMO_OWNER_EMAIL });
     if (!user) {
       return NextResponse.json(
-        { error: "Demo user not found. Run seed." },
+        { success: false, error: "Demo user not found. Run seed." },
         { status: 404 }
       );
     }
@@ -47,28 +46,24 @@ export async function POST(request: Request) {
 
     const session = buildSessionUser(user);
     const token = signToken(session);
-    await setAuthCookie(token);
 
-    return NextResponse.json({
-      ...authSuccessPayload(session, token),
-      demo: true,
-      plan,
-      redirectTo: "/dashboard",
-    });
+    return jsonWithAuthCookie(
+      {
+        ...authSuccessPayload(session, token),
+        demo: true,
+        plan,
+        redirectTo: "/dashboard",
+      },
+      token
+    );
   } catch (error) {
-    if (
-      error instanceof Error &&
-      /MONGODB_URI_DEMO|Demo mode:|Database connection|ECONNREFUSED|querySrv/i.test(
-        error.message
-      )
-    ) {
+    if (isDemoMode() && error instanceof Error) {
       return handleApiError(
         new AppError({
           code: "INTERNAL_ERROR",
           message: error.message,
-          userMessage:
-            "בעיית חיבור למסד הנתונים של ההדגמה. ודאי ש-MONGODB_URI_DEMO מוגדר ב-Vercel ועשית redeploy.",
-          status: 503,
+          userMessage: `שגיאת דמו: ${error.message}`,
+          status: 500,
         }),
         "demo/start"
       );

@@ -10,6 +10,16 @@ export async function GET() {
   const jwt = process.env.JWT_SECRET?.trim() || "";
   const core = isProductionReady();
   const payments = arePaymentsReady();
+
+  let mongoConnected = false;
+  try {
+    const { connectDB } = await import("@/lib/mongodb");
+    await connectDB();
+    mongoConnected = true;
+  } catch {
+    mongoConnected = false;
+  }
+
   return NextResponse.json({
     success: true,
     envMode: getEnvMode(),
@@ -22,6 +32,7 @@ export async function GET() {
       mongo: Boolean(process.env.MONGODB_URI?.trim() || getLandingDemoMongoUri()),
       mongoDemo: Boolean(getLandingDemoMongoUri()),
       mongoDemoEnvKeys: getDemoMongoEnvKeysPresent(),
+      mongoConnected,
       jwt: jwt.length >= 32,
       cron: (process.env.CRON_SECRET?.trim() || "").length >= 16,
       stripe: isStripeConfigured(),
