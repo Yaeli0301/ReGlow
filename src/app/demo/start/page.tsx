@@ -41,9 +41,11 @@ function DemoStartInner() {
           });
           data = await res.json();
           if (res.ok) break;
-          if (attempt < maxAttempts) {
-            await new Promise((r) => setTimeout(r, 1500 * attempt));
-          }
+          const msg = data.userMessage || data.error || "";
+          const noRetry =
+            /mongodb|MONGODB|Invalid scheme|connection string|Demo mode cannot/i.test(msg);
+          if (noRetry || attempt >= maxAttempts) break;
+          await new Promise((r) => setTimeout(r, 800 * attempt));
         }
 
         if (cancelled || !res) return;
@@ -82,12 +84,27 @@ function DemoStartInner() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-gradient-to-br from-brand-50 via-white to-accent-400/10 px-4">
       {error ? (
-        <>
-          <p className="text-center text-red-600">{error}</p>
-          <a href="/login" className="text-brand-600 underline">
-            חזרה להתחברות
-          </a>
-        </>
+        <div className="max-w-md text-center">
+          <p className="text-red-600">{error}</p>
+          {/mongodb|MONGODB/i.test(error) && (
+            <p className="mt-3 text-sm text-gray-600">
+              יש לתקן את <code className="rounded bg-gray-100 px-1">MONGODB_URI_DEMO</code> ב-Vercel
+              — URI מלא שמתחיל ב-<code className="rounded bg-gray-100 px-1">mongodb+srv://</code>
+            </p>
+          )}
+          <div className="mt-4 flex flex-col gap-2">
+            <button
+              type="button"
+              className="text-brand-600 underline"
+              onClick={() => window.location.reload()}
+            >
+              נסי שוב
+            </button>
+            <a href="/login" className="text-sm text-gray-500 underline">
+              חזרה להתחברות
+            </a>
+          </div>
+        </div>
       ) : (
         <>
           <div className="h-10 w-10 animate-pulse rounded-full bg-brand-500" />
