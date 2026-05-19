@@ -21,16 +21,30 @@ const DEMO_MONGO_ENV_KEYS = [
   "MONGODB_URI_DEMO_URI",
 ] as const;
 
-/** Strip quotes / whitespace — common when pasting into Vercel env UI. */
+/** Strip quotes, env prefixes, and extract URI from common Vercel paste mistakes. */
 export function sanitizeMongoUri(raw: string): string {
   let uri = raw.trim();
+
+  // Pasted env line: MONGODB_URI="mongodb+srv://..." or MONGODB_URI_DEMO=mongodb+srv://...
+  const assignMatch = uri.match(
+    /MONGODB_URI(?:_DEMO(?:_MONGODB_URI)?)?\s*=\s*["']?(mongodb(?:\+srv)?:\/\/[^"'\s]+)["']?/i
+  );
+  if (assignMatch?.[1]) return assignMatch[1].trim();
+
+  // URI embedded in JSON, .env file, or surrounding text
+  const embedded = uri.match(/(mongodb(?:\+srv)?:\/\/[^\s"'`\\]+)/);
+  if (embedded?.[1]) uri = embedded[1];
+
   if (
     (uri.startsWith('"') && uri.endsWith('"')) ||
     (uri.startsWith("'") && uri.endsWith("'"))
   ) {
     uri = uri.slice(1, -1).trim();
+    const inner = uri.match(/(mongodb(?:\+srv)?:\/\/[^\s"'`\\]+)/);
+    if (inner?.[1]) uri = inner[1];
   }
-  return uri;
+
+  return uri.trim();
 }
 
 export function isValidMongoUri(uri: string): boolean {
