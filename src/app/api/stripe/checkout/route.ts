@@ -60,18 +60,33 @@ export async function POST(request: Request) {
       await User.findByIdAndUpdate(auth.user.id, { stripeCustomerId: customerId });
     }
 
+    // Apply admin-granted discount (one-time) if present and not yet consumed.
+    const adminDiscountPercent =
+      dbUser?.adminOverride?.discountPercent && dbUser.adminOverride.discountPercent > 0
+        ? dbUser.adminOverride.discountPercent
+        : undefined;
+
     const session = await createCheckoutSession({
       customerId,
       customerEmail: auth.user.email,
       userId: auth.user.id,
       tier,
       useReferralReward,
+      adminDiscountPercent,
     });
+
+    // Consume the discount so it isn't reused on another checkout
+    if (adminDiscountPercent) {
+      await User.findByIdAndUpdate(auth.user.id, {
+        $unset: { "adminOverride.discountPercent": "" },
+      });
+    }
 
     logger.info("Stripe checkout created", {
       userId: auth.user.id,
       tier,
       useReferralReward,
+      adminDiscountPercent,
       sessionId: session.id,
     });
 

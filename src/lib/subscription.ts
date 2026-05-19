@@ -5,6 +5,30 @@ export function hasActiveSubscription(tier: SubscriptionTier): boolean {
   return tier !== "none";
 }
 
+interface OverrideShape {
+  tier?: SubscriptionTier;
+  until?: Date | string | null;
+  discountPercent?: number;
+}
+
+/** Returns true if an admin override is currently in effect. */
+export function isOverrideActive(override?: OverrideShape | null): boolean {
+  if (!override?.tier || override.tier === "none") return false;
+  if (!override.until) return true;
+  const until = new Date(override.until);
+  if (Number.isNaN(until.getTime())) return false;
+  return until.getTime() > Date.now();
+}
+
+/** Effective tier = admin override (when active) OR paid Stripe tier. */
+export function getEffectiveTier(
+  paidTier: SubscriptionTier,
+  override?: OverrideShape | null
+): SubscriptionTier {
+  if (isOverrideActive(override)) return override!.tier!;
+  return paidTier;
+}
+
 export function canAccess(
   tier: SubscriptionTier,
   feature: keyof (typeof PLAN_FEATURES)["premium"]

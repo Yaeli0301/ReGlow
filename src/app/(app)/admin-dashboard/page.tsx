@@ -19,6 +19,9 @@ interface AdminUserRow {
   businessName: string;
   role: string;
   subscriptionTier: string;
+  overrideActive?: boolean;
+  overrideTier?: string | null;
+  overrideUntil?: string | null;
 }
 
 export default function AdminDashboardPage() {
@@ -79,6 +82,7 @@ export default function AdminDashboardPage() {
                   <th className="py-2">{t("auth.email")}</th>
                   <th className="py-2">{t("admin.role")}</th>
                   <th className="py-2">{t("admin.plan")}</th>
+                  <th className="py-2 text-end">פעולות</th>
                 </tr>
               </thead>
               <tbody>
@@ -87,7 +91,31 @@ export default function AdminDashboardPage() {
                     <td className="py-2">{u.businessName}</td>
                     <td className="py-2">{u.email}</td>
                     <td className="py-2">{u.role}</td>
-                    <td className="py-2">{u.subscriptionTier}</td>
+                    <td className="py-2">
+                      <div className="flex items-center gap-2">
+                        <span>{u.subscriptionTier}</span>
+                        {u.overrideActive && u.overrideTier && (
+                          <span
+                            className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-700"
+                            title={
+                              u.overrideUntil
+                                ? `עד ${new Date(u.overrideUntil).toLocaleDateString("he-IL")}`
+                                : "ללא הגבלת זמן"
+                            }
+                          >
+                            ידני: {u.overrideTier}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="py-2 text-end">
+                      <Link
+                        href={`/admin/users/${u.id}`}
+                        className="text-sm text-brand-600 hover:underline"
+                      >
+                        ערוך
+                      </Link>
+                    </td>
                   </tr>
                 ))}
               </tbody>

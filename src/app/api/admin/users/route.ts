@@ -14,20 +14,32 @@ export async function GET(request: Request) {
     await connectDB();
 
     const users = await User.find()
-      .select("email businessName role subscriptionTier createdAt")
+      .select("email businessName role subscriptionTier adminOverride createdAt")
       .sort({ createdAt: -1 })
       .limit(200)
       .lean();
 
     return NextResponse.json({
-      users: users.map((u) => ({
-        id: u._id.toString(),
-        email: u.email,
-        businessName: u.businessName,
-        role: u.role || "business",
-        subscriptionTier: u.subscriptionTier,
-        createdAt: u.createdAt,
-      })),
+      success: true,
+      users: users.map((u) => {
+        const o = u.adminOverride;
+        const overrideActive = Boolean(
+          o?.tier &&
+            o.tier !== "none" &&
+            (!o.until || new Date(o.until).getTime() > Date.now())
+        );
+        return {
+          id: u._id.toString(),
+          email: u.email,
+          businessName: u.businessName,
+          role: u.role || "business",
+          subscriptionTier: u.subscriptionTier,
+          overrideActive,
+          overrideTier: overrideActive ? o!.tier : null,
+          overrideUntil: overrideActive && o?.until ? o.until : null,
+          createdAt: u.createdAt,
+        };
+      }),
     });
   } catch (error) {
     return handleApiError(error, "admin/users");

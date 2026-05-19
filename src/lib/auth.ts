@@ -63,13 +63,28 @@ export function buildSessionUser(user: {
   businessName: string;
   role?: UserRole;
   subscriptionTier: SubscriptionTier;
+  adminOverride?: {
+    tier?: SubscriptionTier;
+    until?: Date | string | null;
+  } | null;
 }): SessionUser {
+  // Lazy import avoids circular dep with subscription.ts → types
+  const effective = (() => {
+    const o = user.adminOverride;
+    if (!o?.tier || o.tier === "none") return user.subscriptionTier;
+    if (!o.until) return o.tier;
+    const until = new Date(o.until);
+    return Number.isFinite(until.getTime()) && until.getTime() > Date.now()
+      ? o.tier
+      : user.subscriptionTier;
+  })();
+
   return {
     id: user._id.toString(),
     email: user.email,
     businessName: user.businessName,
     role: user.role || "business",
-    subscriptionTier: user.subscriptionTier,
+    subscriptionTier: effective,
   };
 }
 

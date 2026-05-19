@@ -25,27 +25,53 @@ export function tierFromPriceId(priceId: string): SubscriptionTier {
   return "none";
 }
 
+/** Creates an ad-hoc, one-off Stripe coupon for an admin-granted % discount. */
+async function createAdminDiscountCoupon(percent: number): Promise<string | undefined> {
+  if (!percent || percent <= 0 || percent > 100) return undefined;
+  try {
+    const stripe = getStripe();
+    const coupon = await stripe.coupons.create({
+      percent_off: percent,
+      duration: "once",
+      name: `ReGlow admin ${percent}% off`,
+    });
+    return coupon.id;
+  } catch {
+    return undefined;
+  }
+}
+
 export async function createCheckoutSession(params: {
   customerId?: string;
   customerEmail: string;
   userId: string;
   tier: Exclude<SubscriptionTier, "none">;
   useReferralReward?: boolean;
+  /** Admin-granted % discount applied once at checkout. */
+  adminDiscountPercent?: number;
 }): Promise<Stripe.Checkout.Session> {
   const stripe = getStripe();
   const priceId = PRICE_IDS[params.tier];
+
+  const couponId = params.adminDiscountPercent
+    ? await createAdminDiscountCoupon(params.adminDiscountPercent)
+    : undefined;
 
   return stripe.checkout.sessions.create({
     mode: "subscription",
     customer: params.customerId,
     customer_email: params.customerId ? undefined : params.customerEmail,
     line_items: [{ price: priceId, quantity: 1 }],
+    ...(couponId ? { discounts: [{ coupon: couponId }] } : {}),
     success_url: `${process.env.NEXT_PUBLIC_APP_URL}/billing?success=true&referral_reward=${params.useReferralReward ? "1" : "0"}`,
     cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/billing?canceled=true`,
     metadata: {
       userId: params.userId,
       tier: params.tier,
       useReferralReward: params.useReferralReward ? "true" : "false",
+      ...(params.adminDiscountPercent
+        ? { adminDiscountPercent: String(params.adminDiscountPercent) }
+        : {}),
     },
     subscription_data: {
       ...(params.useReferralReward ? { trial_period_days: 30 } : {}),

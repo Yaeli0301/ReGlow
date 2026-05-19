@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
-import { getSession, getTokenFromHeader, verifyToken } from "@/lib/auth";
+import { buildSessionUser, getSession, getTokenFromHeader, verifyToken } from "@/lib/auth";
 import { User, type IUser } from "@/models/User";
 import type { SessionUser, UserRole } from "@/types";
 import { hasActiveSubscription } from "@/lib/subscription";
@@ -28,13 +28,15 @@ async function loadDbUser(session: SessionUser): Promise<IUser | NextResponse> {
 }
 
 function sessionFromDbUser(dbUser: IUser): SessionUser {
-  return {
-    id: dbUser._id.toString(),
+  // Re-use builder so effective tier (admin override) is applied consistently.
+  return buildSessionUser({
+    _id: dbUser._id,
     email: dbUser.email,
     businessName: dbUser.businessName,
-    role: dbUser.role || "business",
+    role: dbUser.role,
     subscriptionTier: dbUser.subscriptionTier,
-  };
+    adminOverride: dbUser.adminOverride,
+  });
 }
 
 /** Server actions / routes that need fresh DB fields (Stripe, referral). */
