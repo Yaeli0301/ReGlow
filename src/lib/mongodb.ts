@@ -89,6 +89,16 @@ async function attachVercelDatabasePool(): Promise<void> {
 }
 
 export async function connectDB(): Promise<typeof mongoose> {
+  const isTest = process.env.NODE_ENV === "test" || process.env.VITEST === "true";
+  if (!isTest) {
+    const { getSession } = await import("@/lib/auth");
+    const { isLandingDemoVisitor } = await import("@/lib/landing-demo-session");
+    const session = await getSession();
+    if (isLandingDemoVisitor(session)) {
+      return connectLandingDemoDB();
+    }
+  }
+
   if (cached.conn) return cached.conn;
 
   assertEnvValid();

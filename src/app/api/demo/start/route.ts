@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { connectDB } from "@/lib/mongodb";
-import { canStartLandingDemo, isDemoMode } from "@/lib/env";
+import { connectDB, connectLandingDemoDB } from "@/lib/mongodb";
+import { canStartLandingDemo, isDemoMode, shouldUseLandingDemoDatabase } from "@/lib/env";
 import { jsonWithAuthCookie } from "@/lib/auth-cookie";
 import { User } from "@/models/User";
 import { buildSessionUser, signToken } from "@/lib/auth";
@@ -30,7 +30,11 @@ export async function POST(request: Request) {
     const parsed = schema.safeParse(await request.json().catch(() => ({})));
     const plan: SubscriptionTier = parsed.success ? parsed.data.plan : "pro";
 
-    await connectDB();
+    if (!isDemoMode() && shouldUseLandingDemoDatabase()) {
+      await connectLandingDemoDB();
+    } else {
+      await connectDB();
+    }
     await ensureDemoSeeded();
 
     const user = await User.findOne({ email: DEMO_OWNER_EMAIL });

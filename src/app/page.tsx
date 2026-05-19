@@ -3,8 +3,6 @@
 import Link from "next/link";
 import { useT } from "@/contexts/LanguageContext";
 import { LanguageSwitcher } from "@/components/ui/LanguageSwitcher";
-import { MobileDemoCta } from "@/components/landing/MobileDemoCta";
-
 export default function HomePage() {
   const t = useT();
 
@@ -15,7 +13,7 @@ export default function HomePage() {
   ];
 
   return (
-    <div className="min-h-screen overflow-x-hidden pb-28 md:pb-0">
+    <div className="min-h-screen overflow-x-hidden">
       <header className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 md:px-10 md:py-6">
         <span className="text-2xl font-bold bg-gradient-to-r from-brand-600 to-accent-600 bg-clip-text text-transparent">
           ReGlow
@@ -65,7 +63,6 @@ export default function HomePage() {
           <p className="mt-2 text-sm text-gray-600">{t("landing.proRecommended")}</p>
         </div>
       </main>
-      <MobileDemoCta />
     </div>
   );
 }

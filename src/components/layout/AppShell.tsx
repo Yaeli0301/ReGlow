@@ -12,6 +12,7 @@ import { hasActiveSubscription, canAccess } from "@/lib/subscription";
 import type { PLAN_FEATURES } from "@/types";
 import dynamic from "next/dynamic";
 import { DemoModeBanner } from "@/components/demo/DemoModeBanner";
+import { DemoUpsellModal } from "@/components/demo/DemoUpsellModal";
 import { MaintenanceBanner } from "@/components/system/MaintenanceBanner";
 
 const PendingCashPaymentsSlot = dynamic(
@@ -43,16 +44,24 @@ export function AppShell({
   user,
   children,
   demoMode = false,
+  landingDemo = false,
   demoEmail,
 }: {
   user: SessionUser;
   children: React.ReactNode;
   demoMode?: boolean;
+  /** Visitor came from external landing → /demo/start (show register CTA). */
+  landingDemo?: boolean;
   demoEmail?: string;
 }) {
   return (
     <AppUserProvider user={user} demoMode={demoMode}>
-      <AppShellInner user={user} demoMode={demoMode} demoEmail={demoEmail}>
+      <AppShellInner
+        user={user}
+        demoMode={demoMode}
+        landingDemo={landingDemo}
+        demoEmail={demoEmail}
+      >
         {children}
       </AppShellInner>
     </AppUserProvider>
@@ -63,11 +72,13 @@ function AppShellInner({
   user,
   children,
   demoMode,
+  landingDemo = false,
   demoEmail,
 }: {
   user: SessionUser;
   children: React.ReactNode;
   demoMode?: boolean;
+  landingDemo?: boolean;
   demoEmail?: string;
 }) {
   const pathname = usePathname();
@@ -289,11 +300,13 @@ function AppShellInner({
           <MaintenanceBanner />
           <DemoModeBanner
             demo={demoMode}
+            landingDemo={landingDemo}
             demoEmail={demoEmail}
             subscriptionTier={user.subscriptionTier}
           />
           <UpgradeBanner tier={user.subscriptionTier} demoMode={demoMode} />
           <PendingCashPaymentsSlot />
+          <DemoUpsellModal active={demoMode} />
           {children}
         </div>
       </main>

@@ -1,6 +1,7 @@
 "use client";
 
 import { persistAuthClient } from "@/lib/client-auth";
+import { resetDemoUpsellSegment } from "@/lib/demo/demo-upsell-timer";
 import type { SessionUser, SubscriptionTier, UserRole } from "@/types";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
@@ -63,6 +64,7 @@ function DemoStartInner() {
           persistAuthClient(data.token, sessionUser);
         }
 
+        resetDemoUpsellSegment();
         window.location.href = data.redirectTo || "/dashboard";
       } catch {
         if (!cancelled) {

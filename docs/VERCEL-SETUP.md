@@ -49,7 +49,8 @@ mongodb+srv://USER:PASSWORD@CLUSTER.mongodb.net/reglow?retryWrites=true&w=majori
 | `ENV_MODE` | `production` |
 | `NEXT_PUBLIC_APP_URL` | `https://re-glow-vhp6.vercel.app` |
 | `CRON_SECRET` | מחרוזת אקראית 16+ תווים |
-| `ENABLE_LANDING_DEMO` | `true` — כפתור דמו בדף הנחיתה (מכירה) |
+| `ENABLE_LANDING_DEMO` | `true` — מאפשר דמו רק מקישור חיצוני ל־`/demo/start` (לא מוצג באתר הראשי) |
+| `MONGODB_URI_DEMO` | DB נפרד לדמו מהנחיתה (חובה עם `ENABLE_LANDING_DEMO`) |
 
 Analytics + דוחות (אופציונלי, מומלץ):
 
@@ -73,6 +74,21 @@ Stripe (כשמוכן):
 | `STRIPE_PRICE_PREMIUM` | `price_...` |
 
 **Save** → **Deployments** → פריסה **חדשה** מ-`main` (Redeploy על פריסה קיימת לא ידחוף קוד חדש מ-Git).
+
+### דמו רק מדף נחיתה חיצוני
+
+באתר הראשי (`/`) אין כפתור דמו — רק הרשמה והתחברות.
+
+**מסלול מומלץ למבקרות:**
+
+1. דף הנחיתה **החיצוני** שלך (Wix / וכו') — מסבירים את המוצר  
+2. כפתור **"נסו דמו"** →  
+   `https://re-glow-vhp6.vercel.app/demo/start?plan=pro`  
+3. בתוך הדמו — באנר **"מוכנה? הירשמו לחשבון אמיתי"** → `/register`  
+4. (אופציונלי) בדף הנחיתה גם קישור ישיר **"הירשמו עכשיו"** למי שכבר מוכנה:  
+   `https://re-glow-vhp6.vercel.app/register`
+
+דרושים: `ENABLE_LANDING_DEMO=true` + `MONGODB_URI_DEMO` (DB נפרד מלקוחות אמיתיים).
 
 ## 3. בדיקה אחרי Redeploy
 
