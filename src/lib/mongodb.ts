@@ -12,6 +12,8 @@ declare global {
   var mongooseCache: MongooseCache | undefined;
   // eslint-disable-next-line no-var
   var demoMemoryServer: { stop(): Promise<boolean> } | null | undefined;
+  // eslint-disable-next-line no-var
+  var demoMemoryStartPromise: Promise<string> | undefined;
 }
 
 const cached: MongooseCache = global.mongooseCache ?? { conn: null, promise: null };
@@ -21,10 +23,20 @@ async function resolveUri(): Promise<string> {
   if (shouldUseInMemoryMongo()) {
     if (global.demoMemoryUri) return global.demoMemoryUri;
 
-    const { startDemoMemoryServer } = await import("@/lib/demo-memory-db");
-    global.demoMemoryUri = await startDemoMemoryServer();
-    logger.info("Demo in-memory MongoDB started", { uri: "memory" });
-    return global.demoMemoryUri;
+    if (!global.demoMemoryStartPromise) {
+      global.demoMemoryStartPromise = (async () => {
+        const { startDemoMemoryServer } = await import("@/lib/demo-memory-db");
+        const uri = await startDemoMemoryServer();
+        global.demoMemoryUri = uri;
+        logger.info("Demo in-memory MongoDB started", { uri: "memory" });
+        return uri;
+      })().catch((error) => {
+        global.demoMemoryStartPromise = undefined;
+        throw error;
+      });
+    }
+
+    return global.demoMemoryStartPromise;
   }
   return getMongoUriOrThrow();
 }
@@ -49,12 +61,15 @@ export async function connectDB(): Promise<typeof mongoose> {
   if (!cached.promise) {
     const uri = await resolveUri();
     const isVercel = Boolean(process.env.VERCEL);
+    // Vercel-MongoDB integration URIs often omit the DB name (".../?retryWrites=...").
+    // Force dbName so models land in the "reglow" database instead of "test".
+    const hasDbInUri = /\/[A-Za-z0-9_-]+(\?|$)/.test(uri.replace(/^mongodb(\+srv)?:\/\/[^/]+/, ""));
     cached.promise = mongoose.connect(uri, {
       bufferCommands: false,
       maxPoolSize: 10,
       maxIdleTimeMS: isVercel ? 5000 : undefined,
       serverSelectionTimeoutMS: 15000,
-      // IPv4 only for local Windows DNS issues — not needed on Vercel
+      ...(hasDbInUri ? {} : { dbName: "reglow" }),
       ...(isVercel ? {} : { family: 4 }),
     });
   }

@@ -40,7 +40,7 @@ function loadEnvFile(path) {
 }
 
 const env = loadEnvFile(ENV_FILE);
-const productionUrl = "https://re-glow.vercel.app";
+const productionUrl = process.env.PROD_URL || "https://re-glow-vhp6.vercel.app";
 
 for (const key of KEYS) {
   let value = env[key];

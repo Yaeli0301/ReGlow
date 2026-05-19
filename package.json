@@ -17,14 +17,14 @@
     "seed:demo": "npx tsx scripts/seed-demo.ts",
     "seed:users": "node scripts/ensure-demo-users.mjs",
     "deploy:verify": "node scripts/deploy-verify.mjs",
-    "deploy:verify:prod": "node scripts/deploy-verify.mjs https://re-glow.vercel.app",
+    "deploy:verify:prod": "node scripts/deploy-verify.mjs https://re-glow-vhp6.vercel.app",
     "deploy:verify:render": "node scripts/deploy-verify.mjs https://reglow.onrender.com",
     "render:sync-env": "node scripts/sync-render-env.mjs",
     "mongo:fix-dns": "node scripts/fix-mongo-dns.mjs",
     "vercel:sync-env": "node scripts/sync-vercel-env.mjs",
     "secrets:generate": "node scripts/generate-secrets.mjs",
     "launch": "node scripts/launch-production.mjs",
-    "launch:prod": "node scripts/launch-production.mjs https://re-glow.vercel.app"
+    "launch:prod": "node scripts/launch-production.mjs https://re-glow-vhp6.vercel.app"
   },
   "dependencies": {
     "@types/node": "^25.8.0",

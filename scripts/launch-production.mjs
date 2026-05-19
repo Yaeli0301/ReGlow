@@ -7,7 +7,11 @@ import { readFileSync, existsSync } from "fs";
 import { resolve } from "path";
 import { execSync } from "child_process";
 
-const base = (process.argv[2] || "https://re-glow.vercel.app").replace(/\/$/, "");
+const base = (
+  process.argv[2] ||
+  process.env.PROD_URL ||
+  "https://re-glow-vhp6.vercel.app"
+).replace(/\/$/, "");
 
 function loadEnvLocal() {
   const path = resolve(process.cwd(), ".env.local");

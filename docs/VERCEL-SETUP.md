@@ -1,47 +1,53 @@
 # Vercel + MongoDB Atlas — ReGlow
 
-Production URL: **https://re-glow.vercel.app**
+Production URL: **https://re-glow-vhp6.vercel.app**
 
-> **לא צריך** `npx create-next-app --example with-mongodb` — זה מדריך לאפליקיה חדשה.  
+> **לא צריך** `npx create-next-app --example with-mongodb` — זה מדריך לאפליקציה חדשה.  
 > **ReGlow כבר מחובר** ל-Mongoose; אחרי חיבור DB ב-Vercel Dashboard עשי רק את השלבים למטה.
 
 ## אם חיברת MongoDB ב-Vercel (Integration)
 
-1. **Projects** — ודאי שהפרויקט `re-glow` מחובר למסד.
-2. מקומית:
-   ```bash
-   npx vercel link
-   vercel env pull
-   ```
-   זה יוצר/מעדכן `.env.local` עם `MONGODB_URI` מ-Vercel.
-3. `npm run dev` → http://localhost:3000
-4. בפרודקשן: **Redeploy** ב-Vercel אחרי שינוי env.
+האינטגרציה מזריקה אוטומטית את `MONGODB_URI` ל-Project Settings → Environment Variables.
+
+> ⚠ **חשוב**: ה-URI מהאינטגרציה מסתיים ב-`/?retryWrites=...` (בלי שם DB).  
+> ReGlow מוסיף `dbName: "reglow"` אוטומטית (ראי `src/lib/mongodb.ts`), אבל **רצוי** להוסיף `/reglow` לפני `?` ב-URI ב-Vercel — קריא יותר וברור איפה הנתונים יושבים.
+
+לדוגמה, אם האינטגרציה הגדירה:
+
+```text
+mongodb+srv://Vercel-Admin-ReGlow:***@reglow.bvaoqjq.mongodb.net/?retryWrites=true&w=majority
+```
+
+עדיף לערוך ל:
+
+```text
+mongodb+srv://Vercel-Admin-ReGlow:***@reglow.bvaoqjq.mongodb.net/reglow?retryWrites=true&w=majority
+```
 
 ReGlow כולל כבר `attachDatabasePool` מ-`@vercel/functions` ב-`src/lib/mongodb.ts` (מומלץ ל-Vercel).
 
-## 1. MongoDB Atlas (חובה לפני Vercel)
+## 1. MongoDB Atlas
 
-1. [cloud.mongodb.com](https://cloud.mongodb.com) → **Network Access** → **Add IP** → `0.0.0.0/0`  
-   (מאפשר ל-Vercel להתחבר)
-2. **Database Access** → משתמש `yaeli` עם הסיסמה שלך
-3. **Connect** → Drivers → העתיקי מחרוזת עם `/reglow`:
+1. [cloud.mongodb.com](https://cloud.mongodb.com) → **Network Access** → ודאי `0.0.0.0/0` (האינטגרציה מוסיפה אוטומטית את ה-IPs של Vercel)
+2. **Database Access** → ודאי שמשתמש האינטגרציה (`Vercel-Admin-ReGlow`) קיים עם הרשאות `readWrite`
+3. אם את לא משתמשת באינטגרציה — צרי משתמש משלך והשתמשי במחרוזת:
 
 ```text
-mongodb+srv://yaeli:YOUR_PASSWORD@cluster0.iociobd.mongodb.net/reglow?retryWrites=true&w=majority&appName=Cluster0
+mongodb+srv://USER:PASSWORD@CLUSTER.mongodb.net/reglow?retryWrites=true&w=majority
 ```
 
 ## 2. Vercel — Environment Variables
 
-[Vercel Dashboard](https://vercel.com) → הפרויקט **re-glow** → **Settings** → **Environment Variables**
+[Vercel Dashboard](https://vercel.com) → הפרויקט → **Settings** → **Environment Variables**
 
 הוסיפי לכל הסביבות: **Production**, **Preview**, **Development**
 
 | Key | Value |
 |-----|--------|
-| `MONGODB_URI` | מחרוזת Atlas למעלה (עם `/reglow`) |
+| `MONGODB_URI` | מחרוזת Atlas (רצוי עם `/reglow`) |
 | `JWT_SECRET` | מחרוזת אקראית 32+ תווים (שונה ממקומי!) |
 | `ENV_MODE` | `production` |
-| `NEXT_PUBLIC_APP_URL` | `https://re-glow.vercel.app` |
+| `NEXT_PUBLIC_APP_URL` | `https://re-glow-vhp6.vercel.app` |
 | `CRON_SECRET` | מחרוזת אקראית 16+ תווים |
 | `ENABLE_LANDING_DEMO` | `true` — כפתור דמו בדף הנחיתה (מכירה) |
 
@@ -58,38 +64,35 @@ Stripe (כשמוכן):
 | `STRIPE_PRICE_PRO` | `price_...` |
 | `STRIPE_PRICE_PREMIUM` | `price_...` |
 
-**Save** → **Deployments** → פריסה **חדשה** מ-`main` (לא רק Redeploy).
+**Save** → **Deployments** → פריסה **חדשה** מ-`main` (Redeploy על פריסה קיימת לא ידחוף קוד חדש מ-Git).
 
-### למה אחרי Redeploy האתר עדיין נראה ישן?
+## 3. בדיקה אחרי Redeploy
 
-**Redeploy** על פריסה ישנה = אותו קוד ישן (אנגלית, בלי RTL). זה **לא** מושך את GitHub.
-
-סימנים שהפרודקשן תקוע על גרסה ישנה:
-- דף הבית באנגלית: "Bring your clients back"
-- `https://re-glow.vercel.app/api/setup/status` מחזיר **404**
-- אחרי דחיפה ל-GitHub האתר לא משתנה
-
-**פתרון:**
-
-1. [Vercel Dashboard](https://vercel.com) → פרויקט **re-glow** → **Settings** → **Git**
-2. ודאי: Repository = `Yaeli0301/ReGlow`, Production Branch = `main`
-3. אם אין חיבור Git — **Connect Git Repository** ובחרי את הריפו
-4. **Deployments** → הפריסה האחרונה מ-`main` (commit `32f8720` ומעלה) → **⋯** → **Promote to Production**  
-   (או המתיני ל-Deploy אוטומטי אחרי `git push`)
-5. **אל** תלחצי רק "Redeploy" על הפריסה הישנה
-
-אימות שהגרסה החדשה עלתה:
+### בדיקת הגדרות (ללא סודות)
 
 ```text
-https://re-glow.vercel.app/api/setup/status
+https://re-glow-vhp6.vercel.app/api/setup/status
 ```
 
-צריך JSON עם `"deploy":{"commit":"32f8720"}` (או commit חדש יותר), ודף הבית בעברית עם `lang="he" dir="rtl"`.
+צריך:
 
-## 3. בדיקה
+```json
+{
+  "envMode": "production",
+  "deploy": { "commit": "...", "ref": "main" },
+  "checks": {
+    "mongo": true,
+    "jwt": true,
+    "cron": true,
+    "landingDemo": true
+  }
+}
+```
+
+### בדיקת חיבור DB
 
 ```text
-https://re-glow.vercel.app/api/health
+https://re-glow-vhp6.vercel.app/api/health
 ```
 
 צריך:
@@ -97,38 +100,22 @@ https://re-glow.vercel.app/api/health
 ```json
 {
   "status": "healthy",
-  "checks": {
-    "env_jwt": "ok",
-    "env_mongo": "ok",
-    "database": "ok"
-  }
+  "checks": { "env_jwt": "ok", "env_mongo": "ok", "database": "ok" }
 }
 ```
 
-אם `database: error` — בדקי IP ב-Atlas ו-`MONGODB_URI`.
+אם `database: error` — בדקי IP ב-Atlas, את ה-URI, ושמשתמש ה-DB קיים עם הסיסמה הנכונה.
 
-בדיקת הגדרות (ללא סודות):
+## 4. יצירת משתמשי דמו בפרודקשן
 
-```text
-https://re-glow.vercel.app/api/setup/status
-```
-
-יצירת משתמשי דמו בפרודקשן (פעם אחת, אחרי DB מחובר):
+פעם אחת אחרי שה-DB מחובר:
 
 ```bash
-curl -X POST https://re-glow.vercel.app/api/setup/seed \
+curl -X POST https://re-glow-vhp6.vercel.app/api/setup/seed \
   -H "Authorization: Bearer YOUR_CRON_SECRET"
 ```
 
 מקומית: `npm run launch:prod`
-
-## 4. משתמשי דמו ב-Atlas
-
-מהמחשב (אחרי ש-`.env.local` נכון):
-
-```bash
-npm run seed:users
-```
 
 התחברות: `demo@reglow.local` / `Demo1234!`
 
@@ -139,7 +126,7 @@ npm run seed:users
 - `/api/cron/retention` — כל שעה
 - `/api/cron/reactivate` — יומי
 
-וודאי ש-`CRON_SECRET` מוגדר ב-Vercel.
+ודאי ש-`CRON_SECRET` מוגדר ב-Vercel.
 
 ## 6. CLI (אופציונלי)
 
