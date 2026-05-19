@@ -7,6 +7,14 @@
     {
       "path": "/api/cron/retention",
       "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/daily-report",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/weekly-report",
+      "schedule": "0 7 * * 1"
     }
   ]
 }

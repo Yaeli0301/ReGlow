@@ -8,6 +8,7 @@ import { jsonWithAuthCookie } from "@/lib/auth-cookie";
 import { authSuccessPayload } from "@/lib/auth-response";
 import { isDemoMode } from "@/lib/env";
 import { logger } from "@/lib/logger";
+import { trackEvent } from "@/lib/analytics/event-tracker";
 
 const schema = z.object({
   email: z.string().email(),
@@ -91,6 +92,11 @@ export async function POST(request: Request) {
       userId: session.id,
       role: session.role,
       tier: session.subscriptionTier,
+    });
+    trackEvent({
+      type: "user_logged_in",
+      userId: session.id,
+      metadata: { role: session.role, tier: session.subscriptionTier },
     });
     let token: string;
     try {

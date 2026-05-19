@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { OptInBadge } from "@/components/clients/OptInBadge";
 import { WhatsAppButton } from "@/components/clients/WhatsAppButton";
 import { WHATSAPP_TEMPLATES } from "@/lib/whatsapp";
+import { useT } from "@/contexts/LanguageContext";
 import type { ClientStatus } from "@/types";
 
 interface Client {
@@ -17,6 +18,7 @@ interface Client {
 }
 
 export default function LostClientsPage() {
+  const t = useT();
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [locked, setLocked] = useState(false);
@@ -34,15 +36,15 @@ export default function LostClientsPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <p className="text-gray-500">Loading...</p>;
+  if (loading) return <p className="text-gray-500">{t("common.loading")}</p>;
 
   if (locked) {
     return (
       <div className="card max-w-lg text-center">
-        <h1 className="text-xl font-bold">Pro plan required</h1>
-        <p className="mt-2 text-gray-600">Upgrade to access the lost clients engine</p>
+        <h1 className="text-xl font-bold">{t("lostClients.lockedTitle")}</h1>
+        <p className="mt-2 text-gray-600">{t("lostClients.lockedDesc")}</p>
         <a href="/billing" className="btn-primary mt-4 inline-block">
-          Upgrade to Pro
+          {t("lostClients.upgradeCta")}
         </a>
       </div>
     );
@@ -50,12 +52,12 @@ export default function LostClientsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-red-600">Clients you are losing money on</h1>
-      <p className="mt-1 text-gray-500">These clients haven&apos;t returned in 30+ days</p>
+      <h1 className="text-2xl font-bold text-red-600">{t("lostClients.title")}</h1>
+      <p className="mt-1 text-gray-500">{t("lostClients.subtitle")}</p>
 
       {clients.length === 0 ? (
         <div className="card mt-8 text-center text-gray-500">
-          <p>No lost clients — you&apos;re doing great! 🎉</p>
+          <p>{t("lostClients.empty")}</p>
         </div>
       ) : (
         <div className="mt-6 space-y-3">
@@ -72,7 +74,8 @@ export default function LostClientsPage() {
                 <p className="text-sm text-gray-500">{client.phone}</p>
                 {client.lastVisitDate && (
                   <p className="text-xs text-red-500">
-                    Last visit: {new Date(client.lastVisitDate).toLocaleDateString()}
+                    {t("lostClients.lastVisit")}:{" "}
+                    {new Date(client.lastVisitDate).toLocaleDateString("he-IL")}
                   </p>
                 )}
               </div>
@@ -81,7 +84,7 @@ export default function LostClientsPage() {
                 message={WHATSAPP_TEMPLATES.winBack}
                 optIn={client.optIn}
                 lastMessageSentDate={client.lastMessageSentDate}
-                label="Send reactivation WhatsApp message"
+                label={t("lostClients.sendReactivation")}
               />
             </div>
           ))}
@@ -89,10 +92,7 @@ export default function LostClientsPage() {
       )}
 
       <div className="card mt-8 border-brand-100 bg-brand-50/50">
-        <p className="text-sm text-gray-600">
-          <strong>Automated reactivation:</strong> Runs daily for opted-in clients only, inactive
-          30+ days, max once per 7 days.
-        </p>
+        <p className="text-sm text-gray-600">{t("lostClients.automatedHint")}</p>
       </div>
     </div>
   );

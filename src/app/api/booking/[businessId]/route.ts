@@ -10,6 +10,7 @@ import { resetClientRetention } from "@/lib/retention-engine";
 import { SchedulingConflictError } from "@/lib/scheduling";
 import { getOrCreateBusinessSettings, serializeBusinessSettings } from "@/lib/business-settings";
 import { buildPriceBreakdown, serializeService } from "@/lib/pricing";
+import { trackEvent } from "@/lib/analytics/event-tracker";
 
 const bookSchema = z.object({
   name: z.string().min(1),
@@ -40,6 +41,12 @@ export async function GET(
     Service.find({ userId: businessId, active: true }).sort({ sortOrder: 1 }).lean(),
     getOrCreateBusinessSettings(businessId),
   ]);
+
+  trackEvent({
+    type: "booking_page_viewed",
+    userId: businessId,
+    metadata: { servicesCount: services.length },
+  });
 
   return NextResponse.json({
     businessId,
@@ -116,6 +123,16 @@ export async function POST(
     }
 
     await resetClientRetention(client._id.toString());
+
+    trackEvent({
+      type: "booking_created",
+      userId: businessId,
+      metadata: {
+        appointmentId: appointment._id.toString(),
+        clientId: client._id.toString(),
+        finalPrice: pricing.finalPrice,
+      },
+    });
 
     return NextResponse.json(
       {

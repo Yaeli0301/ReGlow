@@ -8,6 +8,7 @@ import { StripeEvent } from "@/models/StripeEvent";
 import type { SubscriptionTier } from "@/types";
 import { processReferralReward, consumeReferralRewardMonth } from "@/lib/referral-rewards";
 import { logger } from "@/lib/logger";
+import { trackEvent } from "@/lib/analytics/event-tracker";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -95,6 +96,21 @@ export async function POST(request: Request) {
             session.customer as string | undefined
           );
 
+          trackEvent({
+            type: "subscription_started",
+            userId,
+            metadata: { tier, sessionId: session.id },
+          });
+          trackEvent({
+            type: "payment_succeeded",
+            userId,
+            metadata: {
+              tier,
+              amount: (session.amount_total ?? 0) / 100,
+              source: "stripe_checkout",
+            },
+          });
+
           if (tier !== "none") {
             await processReferralReward({
               referredUserId: userId,
@@ -138,6 +154,11 @@ export async function POST(request: Request) {
 
         if (userId) {
           await updateUserSubscription(userId, "none");
+          trackEvent({
+            type: "subscription_cancelled",
+            userId,
+            metadata: { subscriptionId: subscription.id, reason: "deleted" },
+          });
         }
         break;
       }

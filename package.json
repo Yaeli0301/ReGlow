@@ -23,6 +23,7 @@
     "mongo:fix-dns": "node scripts/fix-mongo-dns.mjs",
     "vercel:sync-env": "node scripts/sync-vercel-env.mjs",
     "secrets:generate": "node scripts/generate-secrets.mjs",
+    "admin:promote": "node scripts/promote-admin.mjs",
     "launch": "node scripts/launch-production.mjs",
     "launch:prod": "node scripts/launch-production.mjs https://re-glow-vhp6.vercel.app"
   },

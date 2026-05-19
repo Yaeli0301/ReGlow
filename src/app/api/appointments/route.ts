@@ -11,6 +11,7 @@ import { createValidatedAppointment } from "@/lib/appointment-create";
 import { resetClientRetention } from "@/lib/retention-engine";
 import { SchedulingConflictError } from "@/lib/scheduling";
 import { logger } from "@/lib/logger";
+import { trackEvent } from "@/lib/analytics/event-tracker";
 
 const baseFields = {
   date: z.string(),
@@ -162,6 +163,15 @@ export async function POST(request: Request) {
       userId: auth.user.id,
       appointmentId: (appointment as { _id?: { toString(): string } })?._id?.toString(),
       status: resolvedStatus,
+    });
+    trackEvent({
+      type: resolvedStatus === "completed" ? "appointment_completed" : "appointment_created",
+      userId: auth.user.id,
+      metadata: {
+        appointmentId: (appointment as { _id?: { toString(): string } })?._id?.toString(),
+        clientId: client._id.toString(),
+        serviceName,
+      },
     });
 
     return NextResponse.json({ success: true, appointment }, { status: 201 });

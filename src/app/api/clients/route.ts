@@ -6,6 +6,7 @@ import { Client } from "@/models/Client";
 import { computeClientStatus } from "@/lib/client-status";
 import { createManualClient, mergeDuplicateClients } from "@/lib/client-service";
 import { normalizePhone } from "@/lib/phone";
+import { trackEvent } from "@/lib/analytics/event-tracker";
 
 const createSchema = z.object({
   name: z.string().min(1),
@@ -81,6 +82,12 @@ export async function POST(request: Request) {
       name,
       phone,
       notes,
+    });
+
+    trackEvent({
+      type: "client_created",
+      userId: auth.user.id,
+      metadata: { clientId: client._id?.toString?.() ?? "" },
     });
 
     return NextResponse.json({ client }, { status: 201 });

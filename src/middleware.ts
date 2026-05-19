@@ -7,6 +7,7 @@ const COOKIE_NAME = "reglow_token";
 const protectedPaths = [
   "/dashboard",
   "/admin-dashboard",
+  "/admin-analytics",
   "/clients",
   "/appointments",
   "/lost-clients",
@@ -20,7 +21,7 @@ const protectedPaths = [
   "/onboarding",
 ];
 
-const adminOnlyPrefixes = ["/admin-dashboard", "/admin"];
+const adminOnlyPrefixes = ["/admin-dashboard", "/admin-analytics", "/admin"];
 
 const authPaths = ["/login", "/register"];
 
@@ -62,6 +63,7 @@ export const config = {
   matcher: [
     "/dashboard/:path*",
     "/admin-dashboard/:path*",
+    "/admin-analytics/:path*",
     "/clients/:path*",
     "/appointments/:path*",
     "/lost-clients/:path*",

@@ -65,6 +65,9 @@ export default function AdminDashboardPage() {
           </div>
 
           <div className="mt-8 flex flex-wrap gap-3">
+            <Link href="/admin-analytics">
+              <Button>Analytics</Button>
+            </Link>
             <Link href="/admin/debug">
               <Button variant="secondary">{t("admin.debugPanel")}</Button>
             </Link>

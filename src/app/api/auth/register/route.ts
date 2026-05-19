@@ -8,6 +8,7 @@ import { buildSessionUser, maskEmail, signToken } from "@/lib/auth";
 import { jsonWithAuthCookie } from "@/lib/auth-cookie";
 import { authSuccessPayload } from "@/lib/auth-response";
 import { logger } from "@/lib/logger";
+import { trackEvent } from "@/lib/analytics/event-tracker";
 import { generateReferralCode, normalizeReferralCode } from "@/lib/referral";
 import { validateReferralForRegistration } from "@/lib/referral-rewards";
 import { getOrCreateWeeklySchedule } from "@/lib/availability";
@@ -79,6 +80,11 @@ export async function POST(request: Request) {
       userId: user._id.toString(),
       email: maskEmail(emailLower),
       hasReferrer: Boolean(referrerId),
+    });
+    trackEvent({
+      type: "user_signed_up",
+      userId: user._id.toString(),
+      metadata: { hasReferrer: Boolean(referrerId) },
     });
 
     await getOrCreateWeeklySchedule(user._id.toString());

@@ -148,6 +148,12 @@ export const he = {
     title: "לקוחות אבודים",
     subtitle: "לא הופיעו מעל 30 יום — כאן את מאבדת כסף",
     empty: "אין לקוחות אבודים 🎉",
+    lockedTitle: "נדרש מנוי Pro",
+    lockedDesc: "מנוע ההחזרה האוטומטית של לקוחות אבודות זמין במנוי Pro ומעלה",
+    upgradeCta: "שדרגי ל-Pro",
+    lastVisit: "ביקור אחרון",
+    sendReactivation: "שליחת הודעת החזרה ב-WhatsApp",
+    automatedHint: "החזרה אוטומטית: רצה יומית ללקוחות שאישרו הודעות, מעל 30 ימי חוסר ביקור, פעם ב-7 ימים מקסימום.",
   },
   appointments: {
     proRequiredTitle: "יומן תורים — מנוי Pro",

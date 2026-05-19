@@ -150,6 +150,12 @@ export const en = {
     title: "Lost clients",
     subtitle: "30+ days without a visit — this is lost revenue",
     empty: "No lost clients 🎉",
+    lockedTitle: "Pro plan required",
+    lockedDesc: "The lost-client win-back engine is available on Pro and above",
+    upgradeCta: "Upgrade to Pro",
+    lastVisit: "Last visit",
+    sendReactivation: "Send win-back WhatsApp",
+    automatedHint: "Automated win-back: runs daily for opted-in clients, 30+ days inactive, max once every 7 days.",
   },
   appointments: {
     proRequiredTitle: "Calendar — Pro plan",

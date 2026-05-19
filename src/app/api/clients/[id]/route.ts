@@ -5,6 +5,7 @@ import { Client } from "@/models/Client";
 import { computeClientStatus } from "@/lib/client-status";
 import { mergeDuplicateClients } from "@/lib/client-service";
 import { normalizePhone, formatPhoneDisplay } from "@/lib/phone";
+import { trackEvent } from "@/lib/analytics/event-tracker";
 
 const updateSchema = z.object({
   name: z.string().min(1).optional(),
@@ -52,6 +53,12 @@ export async function PUT(
       client.phoneNormalized,
       client._id
     );
+
+    trackEvent({
+      type: "client_updated",
+      userId: auth.user.id,
+      metadata: { clientId: client._id.toString() },
+    });
 
     return NextResponse.json({ client: merged ?? client });
   } catch (error) {

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireAuthFromRequest } from "@/lib/api-auth";
 import { canAccess } from "@/lib/subscription";
 import { completeAppointmentWithPayment } from "@/lib/payment-service";
+import { trackEvent } from "@/lib/analytics/event-tracker";
 
 const schema = z.object({
   method: z.enum(["cash", "card", "bit", "paypal"]),
@@ -39,6 +40,27 @@ export async function POST(
       appointmentId: id,
       ...parsed.data,
     });
+
+    trackEvent({
+      type: "appointment_completed",
+      userId: auth.user.id,
+      metadata: {
+        appointmentId: id,
+        amount: result.payment.amount,
+        method: result.payment.method,
+      },
+    });
+    if (result.payment.status === "paid") {
+      trackEvent({
+        type: "payment_succeeded",
+        userId: auth.user.id,
+        metadata: {
+          amount: result.payment.amount,
+          method: result.payment.method,
+          source: "appointment_complete",
+        },
+      });
+    }
 
     return NextResponse.json({
       appointment: {

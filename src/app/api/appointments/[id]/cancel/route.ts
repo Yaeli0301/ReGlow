@@ -8,6 +8,7 @@ import { Client } from "@/models/Client";
 import { User } from "@/models/User";
 import { buildCancellationWhatsApp } from "@/lib/notifications";
 import { logger } from "@/lib/logger";
+import { trackEvent } from "@/lib/analytics/event-tracker";
 
 const schema = z.object({
   reason: z.string().optional(),
@@ -44,6 +45,11 @@ export async function POST(
     userId: auth.user.id,
     appointmentId: id,
     hasReason: Boolean(appointment.cancelReason),
+  });
+  trackEvent({
+    type: "appointment_cancelled",
+    userId: auth.user.id,
+    metadata: { appointmentId: id, hasReason: Boolean(appointment.cancelReason) },
   });
 
   let notification = null;

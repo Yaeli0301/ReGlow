@@ -51,6 +51,14 @@ mongodb+srv://USER:PASSWORD@CLUSTER.mongodb.net/reglow?retryWrites=true&w=majori
 | `CRON_SECRET` | מחרוזת אקראית 16+ תווים |
 | `ENABLE_LANDING_DEMO` | `true` — כפתור דמו בדף הנחיתה (מכירה) |
 
+Analytics + דוחות (אופציונלי, מומלץ):
+
+| Key | Value |
+|-----|--------|
+| `ADMIN_EMAIL` | האימייל שלך — לקבלת דוחות יומיים/שבועיים |
+| `RESEND_API_KEY` | מ-[resend.com](https://resend.com) — בלי המפתח, הדוחות יירשמו ללוג בלבד |
+| `ADMIN_EMAIL_FROM` | `ReGlow Reports <onboarding@resend.dev>` (ברירת מחדל) |
+
 יצירת סודות: `npm run secrets:generate`
 
 Stripe (כשמוכן):
@@ -117,16 +125,44 @@ curl -X POST https://re-glow-vhp6.vercel.app/api/setup/seed \
 
 מקומית: `npm run launch:prod`
 
-התחברות: `demo@reglow.local` / `Demo1234!`
+התחברות:
+- **עסק**: `demo@reglow.local` / `Demo1234!`
+- **אדמין**: `admin@reglow.local` / `Demo1234!`
+
+## 4.1. הפיכת האימייל האישי שלך לאדמין (מומלץ!)
+
+במקום להשתמש ב-`admin@reglow.local`, אפשר להפוך כל אימייל שכבר נרשם — או חדש — לאדמין עם גישת **Premium מלאה**:
+
+```bash
+# העלאת משתמש קיים לאדמין
+npm run admin:promote -- your-email@example.com
+
+# יצירת משתמש אדמין חדש (אם לא קיים) — דורש סיסמה כפרמטר שני
+npm run admin:promote -- new-admin@example.com SuperSecret123! "Salon Manager"
+
+# שימוש מול URL אחר (למשל preview)
+npm run admin:promote -- you@example.com --url=https://preview.vercel.app
+```
+
+הסקריפט קורא ל-`/api/setup/promote-admin` עם `CRON_SECRET` מה-`.env.local`. דורש שגם `CRON_SECRET` בפרודקשן יהיה זהה למקומי, או הריצי מקומית מול ה-URL הפרודקשן ועם ה-`CRON_SECRET` של הפרודקשן ב-`.env.local`.
+
+מה זה עושה:
+- אם המשתמש קיים → `role: "admin"`, `subscriptionTier: "premium"`
+- אם לא קיים → יוצר עם הסיסמה שסיפקת
+- מקבל גישה ל-`/admin-dashboard` ו-`/admin-analytics`
 
 ## 5. Cron
 
 `vercel.json` מפעיל אוטומטית על Vercel:
 
-- `/api/cron/retention` — כל שעה
-- `/api/cron/reactivate` — יומי
+- `/api/cron/retention` — 9:00 UTC יומי
+- `/api/cron/reactivate` — 8:00 UTC יומי
+- `/api/cron/daily-report` — 6:00 UTC יומי (דוח לאדמין)
+- `/api/cron/weekly-report` — 7:00 UTC ימי שני (דוח שבועי לאדמין)
 
 ודאי ש-`CRON_SECRET` מוגדר ב-Vercel.
+
+דוחות יישלחו ל-`ADMIN_EMAIL` רק אם גם `RESEND_API_KEY` מוגדר. אחרת — ה-cron עדיין רץ ושומר snapshot ב-DB, אבל לא יישלח מייל (הדוח יירשם ב-logs).
 
 ## 6. CLI (אופציונלי)
 
