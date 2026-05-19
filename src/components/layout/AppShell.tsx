@@ -8,7 +8,8 @@ import { UpgradeBanner } from "./UpgradeBanner";
 import { LanguageSwitcher } from "@/components/ui/LanguageSwitcher";
 import { useT } from "@/contexts/LanguageContext";
 import { AppUserProvider } from "@/contexts/AppUserContext";
-import { hasActiveSubscription } from "@/lib/subscription";
+import { hasActiveSubscription, canAccess } from "@/lib/subscription";
+import type { PLAN_FEATURES } from "@/types";
 import dynamic from "next/dynamic";
 import { DemoModeBanner } from "@/components/demo/DemoModeBanner";
 import { MaintenanceBanner } from "@/components/system/MaintenanceBanner";
@@ -50,7 +51,7 @@ export function AppShell({
   demoEmail?: string;
 }) {
   return (
-    <AppUserProvider user={user}>
+    <AppUserProvider user={user} demoMode={demoMode}>
       <AppShellInner user={user} demoMode={demoMode} demoEmail={demoEmail}>
         {children}
       </AppShellInner>
@@ -74,18 +75,24 @@ function AppShellInner({
   const t = useT();
   const subscribed = hasActiveSubscription(user.subscriptionTier);
 
-  const navItems = [
+  const navItems: Array<{
+    href: string;
+    label: string;
+    Icon: typeof IconDashboard;
+    highlight?: boolean;
+    feature?: keyof (typeof PLAN_FEATURES)["premium"];
+  }> = [
     ...(isAdmin
       ? [{ href: "/admin-dashboard", label: t("admin.dashboardTitle"), Icon: IconDashboard }]
       : []),
-    { href: "/dashboard", label: t("nav.dashboard"), Icon: IconDashboard },
-    { href: "/appointments", label: t("nav.appointments"), Icon: IconCalendar, minTier: "pro" as const },
-    { href: "/schedule", label: t("nav.schedule"), Icon: IconClock },
-    { href: "/clients", label: t("nav.clients"), Icon: IconUsers, requiresPaid: true },
-    { href: "/lost-clients", label: t("nav.lostClients"), Icon: IconHeart, minTier: "pro" as const },
-    { href: "/pricing", label: t("nav.pricing"), Icon: IconCard },
-    { href: "/invoices", label: t("nav.invoices"), Icon: IconCard },
-    { href: "/settings/branding", label: t("nav.branding"), Icon: IconSparkle },
+    { href: "/dashboard", label: t("nav.dashboard"), Icon: IconDashboard, feature: "dashboard" },
+    { href: "/appointments", label: t("nav.appointments"), Icon: IconCalendar, feature: "appointments" },
+    { href: "/schedule", label: t("nav.schedule"), Icon: IconClock, feature: "appointments" },
+    { href: "/clients", label: t("nav.clients"), Icon: IconUsers, feature: "clients" },
+    { href: "/lost-clients", label: t("nav.lostClients"), Icon: IconHeart, feature: "lostClients" },
+    { href: "/pricing", label: t("nav.pricing"), Icon: IconCard, feature: "appointments" },
+    { href: "/invoices", label: t("nav.invoices"), Icon: IconCard, feature: "appointments" },
+    { href: "/settings/branding", label: t("nav.branding"), Icon: IconSparkle, feature: "appointments" },
     { href: "/feedback", label: t("nav.feedback"), Icon: IconHeart },
     ...(user.role === "admin"
       ? [
@@ -99,8 +106,13 @@ function AppShellInner({
   const initial = user.businessName?.charAt(0)?.toUpperCase() || "R";
   const tierLabel = TIER_LABELS[user.subscriptionTier];
 
+  function isNavLocked(feature?: keyof (typeof PLAN_FEATURES)["premium"]) {
+    if (!feature) return false;
+    return !canAccess(user.subscriptionTier, feature);
+  }
+
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-brand-50/40 via-white to-accent-400/5">
+    <div className="flex min-h-screen overflow-x-hidden bg-gradient-to-br from-brand-50/40 via-white to-accent-400/5">
       {/* Desktop sidebar */}
       <aside className="fixed inset-y-0 end-0 z-40 hidden w-[17.5rem] flex-col lg:flex">
         <div className="flex h-full flex-col overflow-hidden border-s border-white/20 bg-gradient-to-b from-brand-900 via-brand-800 to-accent-600 shadow-2xl shadow-brand-900/20">
@@ -122,6 +134,7 @@ function AppShellInner({
             {navItems.map((item) => {
               const active = pathname === item.href;
               const Icon = item.Icon;
+              const locked = isNavLocked(item.feature);
               return (
                 <Link
                   key={item.href}
@@ -132,7 +145,9 @@ function AppShellInner({
                       ? "bg-white text-brand-700 shadow-lg shadow-black/10"
                       : item.highlight
                         ? "bg-white/15 text-white ring-1 ring-white/30 hover:bg-white/25"
-                        : "text-pink-100/90 hover:bg-white/10 hover:text-white"
+                        : locked
+                          ? "text-pink-100/50 hover:bg-white/10 hover:text-pink-100/70"
+                          : "text-pink-100/90 hover:bg-white/10 hover:text-white"
                   }`}
                 >
                   {active && (
@@ -148,6 +163,11 @@ function AppShellInner({
                     <Icon className="h-5 w-5" />
                   </span>
                   <span className="truncate">{item.label}</span>
+                  {locked && (
+                    <span className="ms-auto rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-bold text-pink-100/80 ring-1 ring-white/20">
+                      Pro+
+                    </span>
+                  )}
                   {item.highlight && !subscribed && (
                     <span className="ms-auto rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-bold text-amber-950">
                       {t("nav.new")}
@@ -211,7 +231,7 @@ function AppShellInner({
       </aside>
 
       {/* Main */}
-      <main className="flex min-h-screen flex-1 flex-col lg:me-[17.5rem]">
+      <main className="flex min-h-screen flex-1 flex-col overflow-x-hidden lg:me-[17.5rem]">
         {/* Mobile header */}
         <header className="sticky top-0 z-30 border-b border-brand-100/60 bg-white/90 shadow-sm backdrop-blur-xl lg:hidden">
           <div className="flex items-center justify-between px-4 py-3">
@@ -238,28 +258,41 @@ function AppShellInner({
             {navItems.map((item) => {
               const active = pathname === item.href;
               const Icon = item.Icon;
+              const locked = isNavLocked(item.feature);
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`flex shrink-0 flex-col items-center gap-1 rounded-2xl px-3 py-2 text-[10px] font-semibold transition ${
+                  prefetch
+                  className={`relative flex min-h-[44px] shrink-0 flex-col items-center justify-center gap-1 rounded-2xl px-3 py-2 text-[10px] font-semibold transition ${
                     active
                       ? "bg-gradient-to-br from-brand-500 to-accent-500 text-white shadow-soft"
-                      : "bg-brand-50 text-brand-600"
+                      : locked
+                        ? "bg-gray-100 text-gray-400"
+                        : "bg-brand-50 text-brand-600"
                   }`}
                 >
                   <Icon className="h-5 w-5" />
                   <span className="max-w-[4.5rem] truncate">{item.label}</span>
+                  {locked && (
+                    <span className="absolute -top-0.5 start-1 text-[8px]" aria-hidden>
+                      🔒
+                    </span>
+                  )}
                 </Link>
               );
             })}
           </nav>
         </header>
 
-        <div className="flex-1 p-4 lg:p-8">
+        <div className="flex-1 px-4 py-4 md:px-10 md:py-8 lg:p-8">
           <MaintenanceBanner />
-          <DemoModeBanner demo={demoMode} demoEmail={demoEmail} />
-          <UpgradeBanner tier={user.subscriptionTier} />
+          <DemoModeBanner
+            demo={demoMode}
+            demoEmail={demoEmail}
+            subscriptionTier={user.subscriptionTier}
+          />
+          <UpgradeBanner tier={user.subscriptionTier} demoMode={demoMode} />
           <PendingCashPaymentsSlot />
           {children}
         </div>

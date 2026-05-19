@@ -32,15 +32,20 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const ac = new AbortController();
     Promise.all([
-      fetch("/api/admin/stats").then((r) => r.json()),
-      fetch("/api/admin/users").then((r) => r.json()),
+      fetch("/api/admin/stats", { signal: ac.signal }).then((r) => r.json()),
+      fetch("/api/admin/users", { signal: ac.signal }).then((r) => r.json()),
     ])
       .then(([statsData, usersData]) => {
         setStats(statsData);
         setUsers(usersData.users || []);
       })
+      .catch((err) => {
+        if (err instanceof Error && err.name === "AbortError") return;
+      })
       .finally(() => setLoading(false));
+    return () => ac.abort();
   }, []);
 
   return (

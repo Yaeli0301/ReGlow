@@ -23,6 +23,9 @@ const KEYS = [
   "STRIPE_PRICE_BASIC",
   "STRIPE_PRICE_PRO",
   "STRIPE_PRICE_PREMIUM",
+  "ADMIN_EMAIL",
+  "RESEND_API_KEY",
+  "ADMIN_EMAIL_FROM",
 ];
 
 function loadEnvFile(path) {

@@ -26,6 +26,10 @@ export async function GET(request: Request) {
   const limit = Math.min(Math.max(parseInt(searchParams.get("limit") || "200", 10), 1), 500);
   const skip = Math.max(parseInt(searchParams.get("skip") || "0", 10), 0);
 
+  if (status === "lost" && !canAccess(auth.user.subscriptionTier, "lostClients")) {
+    return NextResponse.json({ error: "Upgrade required" }, { status: 403 });
+  }
+
   const query: Record<string, unknown> = { userId: auth.user.id };
   if (status && ["active", "atRisk", "lost"].includes(status)) {
     query.status = status;

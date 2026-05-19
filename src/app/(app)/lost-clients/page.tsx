@@ -1,9 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { OptInBadge } from "@/components/clients/OptInBadge";
 import { WhatsAppButton } from "@/components/clients/WhatsAppButton";
 import { WHATSAPP_TEMPLATES } from "@/lib/whatsapp";
+import { useAppUser, useDemoMode } from "@/contexts/AppUserContext";
+import { canAccess } from "@/lib/subscription";
 import { useT } from "@/contexts/LanguageContext";
 import type { ClientStatus } from "@/types";
 
@@ -19,11 +22,20 @@ interface Client {
 
 export default function LostClientsPage() {
   const t = useT();
+  const user = useAppUser();
+  const demoMode = useDemoMode();
+  const hasAccess = canAccess(user.subscriptionTier, "lostClients");
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [locked, setLocked] = useState(false);
 
   useEffect(() => {
+    if (!hasAccess) {
+      setLoading(false);
+      setLocked(true);
+      return;
+    }
+
     fetch("/api/clients?status=lost")
       .then(async (res) => {
         if (res.status === 403) {
@@ -34,7 +46,7 @@ export default function LostClientsPage() {
       })
       .then((data) => setClients(data.clients || []))
       .finally(() => setLoading(false));
-  }, []);
+  }, [hasAccess]);
 
   if (loading) return <p className="text-gray-500">{t("common.loading")}</p>;
 
@@ -43,9 +55,12 @@ export default function LostClientsPage() {
       <div className="card max-w-lg text-center">
         <h1 className="text-xl font-bold">{t("lostClients.lockedTitle")}</h1>
         <p className="mt-2 text-gray-600">{t("lostClients.lockedDesc")}</p>
-        <a href="/billing" className="btn-primary mt-4 inline-block">
+        <Link
+          href={demoMode ? "/demo/start?plan=pro" : "/billing"}
+          className="btn-primary mt-4 inline-block"
+        >
           {t("lostClients.upgradeCta")}
-        </a>
+        </Link>
       </div>
     );
   }

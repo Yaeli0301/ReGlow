@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useT } from "@/contexts/LanguageContext";
 import { LanguageSwitcher } from "@/components/ui/LanguageSwitcher";
+import { MobileDemoCta } from "@/components/landing/MobileDemoCta";
 
 export default function HomePage() {
   const t = useT();
@@ -14,8 +15,8 @@ export default function HomePage() {
   ];
 
   return (
-    <div className="min-h-screen">
-      <header className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-6">
+    <div className="min-h-screen overflow-x-hidden pb-28 md:pb-0">
+      <header className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 md:px-10 md:py-6">
         <span className="text-2xl font-bold bg-gradient-to-r from-brand-600 to-accent-600 bg-clip-text text-transparent">
           ReGlow
         </span>
@@ -30,7 +31,7 @@ export default function HomePage() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-6 py-16 text-center">
+      <main className="mx-auto max-w-6xl px-4 py-10 text-center md:px-10 md:py-16">
         <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl">
           {t("landing.title")}{" "}
           <span className="bg-gradient-to-r from-brand-500 to-accent-500 bg-clip-text text-transparent">
@@ -47,7 +48,7 @@ export default function HomePage() {
           </Link>
         </div>
 
-        <div className="mt-20 grid gap-6 sm:grid-cols-3">
+        <div className="mt-20 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
           {features.map((f) => (
             <div key={f.title} className="card text-start">
               <h3 className="font-semibold text-brand-700">{f.title}</h3>
@@ -64,6 +65,7 @@ export default function HomePage() {
           <p className="mt-2 text-sm text-gray-600">{t("landing.proRecommended")}</p>
         </div>
       </main>
+      <MobileDemoCta />
     </div>
   );
 }

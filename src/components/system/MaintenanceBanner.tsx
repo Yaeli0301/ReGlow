@@ -1,6 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import {
+  getCachedMaintenanceStatus,
+  setCachedMaintenanceStatus,
+} from "@/lib/system-status-cache";
 
 interface SystemStatus {
   maintenance: boolean;
@@ -51,7 +55,26 @@ export function MaintenanceBanner() {
   const [status, setStatus] = useState<SystemStatus | null>(null);
 
   useEffect(() => {
-    fetchSystemStatus().then(setStatus);
+    const cached = getCachedMaintenanceStatus();
+    if (cached) {
+      setStatus({
+        maintenance: cached.maintenance,
+        state: cached.maintenance ? "BLOCKED" : "READY",
+        reason: cached.reason,
+      });
+      return;
+    }
+
+    let cancelled = false;
+    fetchSystemStatus().then((result) => {
+      if (cancelled || !result) return;
+      setCachedMaintenanceStatus(result.maintenance, result.reason);
+      setStatus(result);
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   if (!status?.maintenance) return null;
@@ -59,7 +82,7 @@ export function MaintenanceBanner() {
   return (
     <div
       role="alert"
-      className="border-b border-red-200 bg-red-600 px-4 py-3 text-center text-sm font-medium text-white"
+      className="border-b border-red-200 bg-red-600 px-4 py-3 text-center text-base font-medium text-white md:text-sm"
     >
       המערכת אינה זמינה זמנית
       {status.reason ? ` — ${status.reason}` : ""}. נסי שוב מאוחר יותר.

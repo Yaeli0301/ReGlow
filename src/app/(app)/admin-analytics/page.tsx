@@ -141,12 +141,44 @@ export default function AdminAnalyticsPage() {
   }, [days]);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    const ac = new AbortController();
+    setLoading(true);
+    setInsightsLoading(true);
+    setError("");
 
-  useEffect(() => {
-    loadInsights();
-  }, [loadInsights]);
+    const params = new URLSearchParams();
+    if (insightFilter.period !== "all") params.set("period", insightFilter.period);
+    if (insightFilter.type !== "all") params.set("type", insightFilter.type);
+
+    Promise.all([
+      fetch(`/api/admin/analytics?days=${days}`, {
+        credentials: "include",
+        signal: ac.signal,
+      }).then((res) => parseJsonResponse<AnalyticsData>(res)),
+      fetch(`/api/admin/insights?${params}`, {
+        credentials: "include",
+        signal: ac.signal,
+      }).then((res) => parseJsonResponse<{ items: InsightItem[] }>(res)),
+    ])
+      .then(([analyticsResult, insightsResult]) => {
+        if (!analyticsResult.ok) {
+          setError(analyticsResult.error || "טעינה נכשלה");
+          return;
+        }
+        setData(analyticsResult.data);
+        if (insightsResult.ok) setInsights(insightsResult.data.items || []);
+      })
+      .catch((err) => {
+        if (err instanceof Error && err.name === "AbortError") return;
+        setError("שגיאת רשת");
+      })
+      .finally(() => {
+        setLoading(false);
+        setInsightsLoading(false);
+      });
+
+    return () => ac.abort();
+  }, [days, insightFilter]);
 
   if (loading && !data) {
     return <AnalyticsSkeleton />;

@@ -8,17 +8,17 @@ body {
 
 @layer base {
   body {
-    @apply bg-gradient-to-br from-brand-50 via-white to-accent-400/5 text-gray-900 antialiased;
+    @apply overflow-x-hidden bg-gradient-to-br from-brand-50 via-white to-accent-400/5 text-base text-gray-900 antialiased md:text-sm;
   }
 }
 
 @layer components {
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-brand-500 to-accent-500 px-5 py-2.5 text-sm font-semibold text-white shadow-soft transition hover:opacity-90 disabled:opacity-50;
+    @apply inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-brand-500 to-accent-500 px-5 py-2.5 text-base font-semibold text-white shadow-soft transition hover:opacity-90 disabled:opacity-50 md:w-auto md:text-sm;
   }
 
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 rounded-2xl border border-brand-200 bg-white px-5 py-2.5 text-sm font-semibold text-brand-700 shadow-card transition hover:bg-brand-50 disabled:opacity-50;
+    @apply inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-2xl border border-brand-200 bg-white px-5 py-2.5 text-base font-semibold text-brand-700 shadow-card transition hover:bg-brand-50 disabled:opacity-50 md:w-auto md:text-sm;
   }
 
   .card {

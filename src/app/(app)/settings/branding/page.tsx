@@ -4,12 +4,14 @@ import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { SubscriptionGate } from "@/components/billing/SubscriptionGate";
-import { useAppUser } from "@/contexts/AppUserContext";
+import { useAppUser, useDemoMode } from "@/contexts/AppUserContext";
 import { canAccess } from "@/lib/subscription";
 
 export default function BrandingPage() {
   const user = useAppUser();
+  const demoMode = useDemoMode();
   const hasPro = canAccess(user.subscriptionTier, "appointments");
+  const hasBooking = canAccess(user.subscriptionTier, "booking");
   const [businessName, setBusinessName] = useState(user.businessName);
   const [themeColor, setThemeColor] = useState("#c026d3");
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
@@ -79,7 +81,19 @@ export default function BrandingPage() {
         </div>
         <div className="rounded-xl border-2 bg-brand-50 p-4 text-sm" style={{ borderColor: themeColor }}>
           <p style={{ color: themeColor }} className="font-semibold">תצוגה — {businessName}</p>
-          <p className="mt-1 text-gray-600">{bookingUrl}</p>
+          {hasBooking ? (
+            <p className="mt-1 text-gray-600">{bookingUrl}</p>
+          ) : (
+            <p className="mt-2 text-amber-700">
+              דף הזמנות אונליין זמין ב-Premium בלבד.{" "}
+              <a
+                href={demoMode ? "/demo/start?plan=premium" : "/billing"}
+                className="font-semibold underline"
+              >
+                {demoMode ? "נסי Premium בדמו" : "שדרוג ל-Premium"}
+              </a>
+            </p>
+          )}
         </div>
         {message && <p className="text-sm text-brand-600">{message}</p>}
         <Button type="submit" disabled={saving}>{saving ? "שומר..." : "שמירה"}</Button>

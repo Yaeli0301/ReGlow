@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -23,11 +23,15 @@ interface Client {
   optIn: boolean;
 }
 
+const PAGE_SIZE = 50;
+
 export default function ClientsPage() {
   const t = useT();
   const hasSubscription = useHasSubscription();
   const [clients, setClients] = useState<Client[]>([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [needsSubscription, setNeedsSubscription] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -35,25 +39,49 @@ export default function ClientsPage() {
   const [form, setForm] = useState({ name: "", phone: "", notes: "" });
   const [error, setError] = useState("");
 
-  function loadClients() {
+  const fetchClients = useCallback((skip: number, append: boolean, signal?: AbortSignal) => {
     setLoadError(false);
-    fetch("/api/clients")
+    if (append) setLoadingMore(true);
+    else setLoading(true);
+
+    return fetch(`/api/clients?limit=${PAGE_SIZE}&skip=${skip}`, { signal })
       .then(async (res) => {
         if (res.status === 403) {
           setNeedsSubscription(true);
-          return { clients: [] };
+          return { clients: [], total: 0 };
         }
         if (!res.ok) throw new Error("clients fetch failed");
         return res.json();
       })
-      .then((data) => setClients(data.clients || []))
-      .catch(() => setLoadError(true))
-      .finally(() => setLoading(false));
-  }
+      .then((data) => {
+        const batch = (data.clients || []) as Client[];
+        setTotal(data.total ?? batch.length);
+        setClients((prev) => (append ? [...prev, ...batch] : batch));
+      })
+      .catch((err) => {
+        if (err instanceof Error && err.name === "AbortError") return;
+        setLoadError(true);
+      })
+      .finally(() => {
+        setLoading(false);
+        setLoadingMore(false);
+      });
+  }, []);
+
+  const refreshClients = useCallback(() => {
+    void fetchClients(0, false);
+  }, [fetchClients]);
 
   useEffect(() => {
-    loadClients();
-  }, []);
+    const ac = new AbortController();
+    void fetchClients(0, false, ac.signal);
+    return () => ac.abort();
+  }, [fetchClients]);
+
+  function loadMoreClients() {
+    if (loadingMore || clients.length >= total) return;
+    void fetchClients(clients.length, true);
+  }
 
   function resetForm() {
     setForm({ name: "", phone: "", notes: "" });
@@ -104,23 +132,27 @@ export default function ClientsPage() {
     }
 
     resetForm();
-    loadClients();
+    refreshClients();
   }
 
   async function handleDelete(id: string) {
     if (!hasSubscription) return;
     if (!confirm(t("clients.deleteConfirm"))) return;
     await fetch(`/api/clients/${id}`, { method: "DELETE" });
-    loadClients();
+    refreshClients();
   }
 
-  if (loading) return <p className="text-gray-500">{t("common.loading")}</p>;
+  const hasMore = clients.length < total;
+
+  if (loading && clients.length === 0) {
+    return <p className="text-base text-gray-500 md:text-sm">{t("common.loading")}</p>;
+  }
 
   if (loadError) {
     return (
       <div className="card max-w-lg text-center">
         <p className="text-red-600">{t("common.error")}</p>
-        <Button className="mt-4" onClick={loadClients}>
+        <Button className="mt-4 min-h-[44px] w-full md:w-auto" onClick={refreshClients}>
           {t("common.retry")}
         </Button>
       </div>
@@ -141,9 +173,14 @@ export default function ClientsPage() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">{t("clients.title")}</h1>
-          <p className="text-gray-500">{clients.length} {t("clients.totalLabel")}</p>
+          <p className="text-gray-500">
+            {clients.length}
+            {total > clients.length ? ` / ${total}` : ""} {t("clients.totalLabel")}
+          </p>
         </div>
-        <Button onClick={openAddForm}>+ {t("clients.addClient")}</Button>
+        <Button className="min-h-[44px] w-full md:w-auto" onClick={openAddForm}>
+          + {t("clients.addClient")}
+        </Button>
       </div>
 
       {showForm && (
@@ -216,6 +253,16 @@ export default function ClientsPage() {
               </div>
             </div>
           ))}
+          {hasMore && (
+            <Button
+              variant="secondary"
+              className="min-h-[44px] w-full"
+              disabled={loadingMore}
+              onClick={loadMoreClients}
+            >
+              {loadingMore ? t("common.loading") : "טען עוד"}
+            </Button>
+          )}
         </div>
       )}
     </div>

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { useDebounce } from "@/hooks/useDebounce";
 import type { PaymentMethod, PriceLineItem } from "@/types/payments";
 
 interface ServiceOption {
@@ -46,39 +47,63 @@ export function PaymentCheckoutModal({
     [services, serviceId]
   );
 
+  const debouncedServiceId = useDebounce(serviceId, 300);
+  const debouncedAddOns = useDebounce(selectedAddOnIds.join(","), 300);
+  const debouncedExtraLabel = useDebounce(extraLabel, 300);
+  const debouncedExtraAmount = useDebounce(extraAmount, 300);
+  const debouncedManualPrice = useDebounce(manualPrice, 300);
+
   useEffect(() => {
     if (!open) return;
-    fetch("/api/services")
+    const ac = new AbortController();
+    fetch("/api/services", { signal: ac.signal })
       .then((r) => r.json())
       .then((d) => {
         setServices(d.services || []);
         if (d.services?.[0]) setServiceId(d.services[0]._id);
-      });
+      })
+      .catch(() => undefined);
+    return () => ac.abort();
   }, [open]);
 
   useEffect(() => {
     if (!open) return;
     const extras: PriceLineItem[] = [];
-    if (extraLabel && extraAmount) {
-      extras.push({ label: extraLabel, amount: Number(extraAmount) || 0 });
+    if (debouncedExtraLabel && debouncedExtraAmount) {
+      extras.push({
+        label: debouncedExtraLabel,
+        amount: Number(debouncedExtraAmount) || 0,
+      });
     }
+    const ac = new AbortController();
     fetch("/api/pricing/calculate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      signal: ac.signal,
       body: JSON.stringify({
-        serviceId: serviceId || undefined,
-        serviceName: !serviceId ? defaultServiceName : undefined,
-        selectedAddOnIds,
+        serviceId: debouncedServiceId || undefined,
+        serviceName: !debouncedServiceId ? defaultServiceName : undefined,
+        selectedAddOnIds: debouncedAddOns ? debouncedAddOns.split(",").filter(Boolean) : [],
         extraLineItems: extras,
-        manualFinalPrice: manualPrice ? Number(manualPrice) : undefined,
+        manualFinalPrice: debouncedManualPrice ? Number(debouncedManualPrice) : undefined,
       }),
     })
       .then((r) => r.json())
       .then((d) => {
         setLineItems(d.lineItems || []);
         setFinalPrice(d.finalPrice || 0);
-      });
-  }, [open, serviceId, selectedAddOnIds, extraLabel, extraAmount, manualPrice, defaultServiceName]);
+      })
+      .catch(() => undefined);
+    return () => ac.abort();
+  }, [
+    open,
+    debouncedServiceId,
+    debouncedAddOns,
+    debouncedExtraLabel,
+    debouncedExtraAmount,
+    debouncedManualPrice,
+    defaultServiceName,
+  ]);
 
   if (!open) return null;
 

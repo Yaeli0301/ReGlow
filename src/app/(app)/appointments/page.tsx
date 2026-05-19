@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   format,
   startOfWeek,
@@ -77,62 +77,72 @@ export default function AppointmentsPage() {
 
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
-  function load() {
+  const clientsLoadedRef = useRef(false);
+
+  const loadClientsForForm = useCallback(async (signal?: AbortSignal) => {
+    if (clientsLoadedRef.current && clients.length > 0) return;
+    const res = await fetch("/api/clients?limit=200", { signal });
+    if (!res.ok) return;
+    const data = (await res.json()) as { clients?: Client[] };
+    setClients(data.clients || []);
+    clientsLoadedRef.current = true;
+  }, [clients.length]);
+
+  const loadAppointments = useCallback(
+    (signal?: AbortSignal) => {
+      if (!hasPro) {
+        setLoading(false);
+        return;
+      }
+
+      setLoadError(false);
+      const from =
+        viewMode === "week"
+          ? weekStart.toISOString()
+          : startOfMonth(monthDate).toISOString();
+      const to =
+        viewMode === "week"
+          ? addDays(weekStart, 7).toISOString()
+          : endOfMonth(monthDate).toISOString();
+
+      return fetch(
+        `/api/appointments?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
+        { signal }
+      )
+        .then(async (apptRes) => {
+          if (apptRes.status === 403) {
+            setAppointments([]);
+            return;
+          }
+          if (!apptRes.ok) throw new Error("appointments failed");
+          const apptData = (await apptRes.json()) as { appointments?: Appointment[] };
+          setAppointments(apptData.appointments || []);
+        })
+        .catch((err) => {
+          if (err instanceof Error && err.name === "AbortError") return;
+          setLoadError(true);
+        });
+    },
+    [hasPro, weekStart, monthDate, viewMode]
+  );
+
+  useEffect(() => {
     if (!hasPro) {
       setLoading(false);
       return;
     }
-
-    setLoadError(false);
-    const from =
-      viewMode === "week"
-        ? weekStart.toISOString()
-        : startOfMonth(monthDate).toISOString();
-    const to =
-      viewMode === "week"
-        ? addDays(weekStart, 7).toISOString()
-        : endOfMonth(monthDate).toISOString();
-
-    Promise.all([
-      fetch(`/api/appointments?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
-      fetch("/api/clients"),
-    ])
-      .then(async ([apptRes, clientRes]) => {
-        if (apptRes.status === 403) {
-          setAppointments([]);
-          return;
-        }
-        if (!apptRes.ok) {
-          throw new Error("appointments failed");
-        }
-        const apptText = await apptRes.text();
-        const clientText = clientRes.ok ? await clientRes.text() : "";
-        let apptData: { appointments?: Appointment[] } = {};
-        let clientData: { clients?: Client[] } = { clients: [] };
-        try {
-          apptData = apptText ? (JSON.parse(apptText) as { appointments?: Appointment[] }) : {};
-        } catch {
-          throw new Error("appointments invalid response");
-        }
-        try {
-          clientData = clientText
-            ? (JSON.parse(clientText) as { clients?: Client[] })
-            : { clients: [] };
-        } catch {
-          clientData = { clients: [] };
-        }
-        setAppointments(apptData.appointments || []);
-        setClients(clientData.clients || []);
-      })
-      .catch(() => setLoadError(true))
-      .finally(() => setLoading(false));
-  }
+    setLoading(true);
+    const ac = new AbortController();
+    void loadAppointments(ac.signal)?.finally(() => setLoading(false));
+    return () => ac.abort();
+  }, [hasPro, loadAppointments]);
 
   useEffect(() => {
-    setLoading(true);
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [weekStart, monthDate, viewMode, hasPro]);
+    if (!showForm || !hasPro) return;
+    const ac = new AbortController();
+    void loadClientsForForm(ac.signal);
+    return () => ac.abort();
+  }, [showForm, hasPro, loadClientsForForm]);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -163,7 +173,8 @@ export default function AppointmentsPage() {
     if (!res.ok) return;
 
     setShowForm(false);
-    load();
+    clientsLoadedRef.current = false;
+    void loadAppointments();
   }
 
   async function cancelAppointment(id: string) {
@@ -177,7 +188,7 @@ export default function AppointmentsPage() {
     if (data.notification?.url) {
       window.open(data.notification.url, "_blank");
     }
-    load();
+    void loadAppointments();
   }
 
   function openCheckout(appt: Appointment) {
@@ -213,7 +224,7 @@ export default function AppointmentsPage() {
     return (
       <div className="card max-w-lg text-center">
         <p className="text-red-600">{t("appointments.loadError")}</p>
-        <Button className="mt-4" onClick={() => load()}>
+        <Button className="mt-4" onClick={() => void loadAppointments()}>
           {t("common.retry")}
         </Button>
       </div>
@@ -228,7 +239,7 @@ export default function AppointmentsPage() {
         clientName={checkoutAppt?.clientName || ""}
         defaultServiceName={checkoutAppt?.serviceName}
         onClose={() => setCheckoutAppt(null)}
-        onComplete={() => load()}
+        onComplete={() => void loadAppointments()}
       />
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>

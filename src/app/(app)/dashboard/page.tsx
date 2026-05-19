@@ -64,7 +64,8 @@ export default function DashboardPage() {
     setLoading(true);
     setLoadError(false);
 
-    fetch("/api/dashboard/stats")
+    const ac = new AbortController();
+    fetch("/api/dashboard/stats", { signal: ac.signal })
       .then((res) => parseJsonResponse<DashboardStats>(res))
       .then((result) => {
         if (!result.ok) {
@@ -73,12 +74,18 @@ export default function DashboardPage() {
         }
         setStats(result.data);
       })
-      .catch(() => setLoadError(true))
+      .catch((err) => {
+        if (err instanceof Error && err.name === "AbortError") return;
+        setLoadError(true);
+      })
       .finally(() => setLoading(false));
+
+    return () => ac.abort();
   }, [hasSubscription]);
 
   useEffect(() => {
-    loadStats();
+    const cleanup = loadStats();
+    return cleanup;
   }, [loadStats]);
 
   useEffect(() => {
