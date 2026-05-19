@@ -55,6 +55,7 @@ export async function GET() {
       mongoDemoInvalidKeys: demoMongo.invalidKeys,
       mongoDemoUser: demoMeta.user,
       mongoDemoHost: demoMeta.host,
+      mongoDemoAuthSource: demoUri?.includes("authSource=") ?? false,
       mongoConnected,
       mongoConnectionError,
       jwt: jwt.length >= 32,

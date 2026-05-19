@@ -47,6 +47,21 @@ export function sanitizeMongoUri(raw: string): string {
   return uri.trim();
 }
 
+/** Atlas DB users authenticate via admin — missing authSource causes bad auth. */
+export function ensureAtlasConnectionUri(uri: string): string {
+  const clean = sanitizeMongoUri(uri);
+  if (!/^mongodb\+srv:\/\//i.test(clean)) return clean;
+
+  let out = clean;
+  if (!/authSource=/i.test(out)) {
+    out += `${out.includes("?") ? "&" : "?"}authSource=admin`;
+  }
+  if (!/retryWrites=/i.test(out)) {
+    out += "&retryWrites=true";
+  }
+  return out;
+}
+
 export function isValidMongoUri(uri: string): boolean {
   return /^mongodb(\+srv)?:\/\//.test(sanitizeMongoUri(uri));
 }
@@ -93,7 +108,9 @@ export function getDemoMongoEnvKeysPresent(): string[] {
 
 export function resolveDemoMongoEnv(): { uri: string; key: string } | null {
   for (const entry of listDemoMongoEnvEntries()) {
-    if (isValidMongoUri(entry.uri)) return { uri: entry.uri, key: entry.key };
+    if (isValidMongoUri(entry.uri)) {
+      return { uri: ensureAtlasConnectionUri(entry.uri), key: entry.key };
+    }
   }
   return null;
 }
@@ -188,7 +205,7 @@ export function getMongoUriOrThrow(): string {
           "Demo on Vercel needs MONGODB_URI_DEMO — set a valid mongodb+srv:// URI (separate demo database)."
         );
       }
-      return fallback;
+      return ensureAtlasConnectionUri(fallback);
     }
 
     throw new Error(
@@ -199,16 +216,16 @@ export function getMongoUriOrThrow(): string {
   // Vercel + Atlas integration: use SRV URI from the platform (not Windows standard string).
   if (process.env.VERCEL) {
     const vercelUri = process.env.MONGODB_URI?.trim();
-    if (vercelUri) return vercelUri;
+    if (vercelUri) return ensureAtlasConnectionUri(vercelUri);
   }
   const standard = process.env.MONGODB_URI_STANDARD?.trim();
-  if (standard && !process.env.VERCEL) return standard;
+  if (standard && !process.env.VERCEL) return ensureAtlasConnectionUri(standard);
 
   const uri = process.env.MONGODB_URI;
   if (!uri) {
     throw new Error("Production mode: MONGODB_URI is required");
   }
-  return uri;
+  return ensureAtlasConnectionUri(uri);
 }
 
 export function isRealPaymentsEnabled(): boolean {

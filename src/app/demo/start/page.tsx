@@ -90,13 +90,15 @@ function DemoStartInner() {
             <div className="mt-3 space-y-2 text-sm text-gray-600">
               {/bad auth|authentication failed/i.test(error) ? (
                 <>
-                  <p className="font-semibold text-amber-800">סיסמה או משתמש שגויים ב-MONGODB_URI_DEMO</p>
-                  <ol className="list-inside list-decimal space-y-1 text-start">
-                    <li>Atlas → Database Access → אפסי סיסמה למשתמש</li>
-                    <li>Atlas → Connect → Drivers → העתיקי URI מלא</li>
-                    <li>Vercel → MONGODB_URI_DEMO → הדביקי רק mongodb+srv://...</li>
-                    <li>Redeploy</li>
-                  </ol>
+                  <p className="font-semibold text-amber-800">
+                    Atlas דחה את ההתחברות — לא תמיד סיסמה שגויה
+                  </p>
+                  <ul className="list-inside list-disc space-y-1 text-start">
+                    <li>ודאי שהמשתמש קיים בקלאסטר <strong>mongodb-uri-demo</strong></li>
+                    <li>אם יש תווים מיוחדים בסיסמה — צריך URL encode</li>
+                    <li>נסי: Vercel Storage → Copy connection string (בלי להקליד ידנית)</li>
+                    <li>פתרון מהיר לבדיקה: <code className="rounded bg-gray-100 px-1">ALLOW_DEMO_ON_PROD_DB=true</code></li>
+                  </ul>
                 </>
               ) : (
                 <p>
