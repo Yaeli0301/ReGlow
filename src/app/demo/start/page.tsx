@@ -1,7 +1,7 @@
 "use client";
 
 import { persistAuthClient } from "@/lib/client-auth";
-import type { SessionUser, SubscriptionTier } from "@/types";
+import type { SessionUser, SubscriptionTier, UserRole } from "@/types";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 
@@ -56,7 +56,7 @@ function DemoStartInner() {
           const sessionUser: SessionUser = {
             id: data.user.id,
             email: data.user.email,
-            role: data.user.role,
+            role: (data.user.role === "admin" ? "admin" : "business") as UserRole,
             businessName: data.user.businessName || "ReGlow",
             subscriptionTier: (data.user.subscriptionTier || plan) as SubscriptionTier,
           };
