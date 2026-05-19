@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { verifyTokenEdge } from "@/lib/jwt-edge";
-import { checkApiSystemGuard } from "@/middleware/system-guard";
+import { checkApiSystemGuard } from "@/lib/system/edge-guard";
 
 const COOKIE_NAME = "reglow_token";
 
@@ -28,6 +28,10 @@ const authPaths = ["/login", "/register"];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  const systemBlocked = checkApiSystemGuard(request);
+  if (systemBlocked) return systemBlocked;
+
   const token = request.cookies.get(COOKIE_NAME)?.value;
 
   const isProtected = protectedPaths.some((p) => pathname.startsWith(p));

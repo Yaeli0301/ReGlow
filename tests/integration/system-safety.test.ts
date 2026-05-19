@@ -14,7 +14,7 @@ import {
   setKillSwitch,
   invalidateKillSwitchCache,
 } from "@/lib/system/kill-switch";
-import { isExemptFromSystemGuard } from "@/middleware/system-guard";
+import { isExemptFromSystemGuard } from "@/lib/system/edge-guard";
 import {
   isProduction,
   isDemo,

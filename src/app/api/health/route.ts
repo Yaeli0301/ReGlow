@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import { getEnvMode, isDemoMode, shouldUseInMemoryMongo } from "@/lib/env";
 import { isProductionReady, arePaymentsReady } from "@/lib/production-guard";
+import { getSystemState } from "@/lib/system/system-state";
+import { getAppMode } from "@/lib/system/mode";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +47,27 @@ export async function GET() {
 
   const prodReady = isProductionReady();
 
+  let systemSnapshot;
+  try {
+    systemSnapshot = await getSystemState({ skipDb: checks.database !== "ok" });
+  } catch (error) {
+    systemSnapshot = {
+      state: "BLOCKED" as const,
+      reason: error instanceof Error ? error.message : "System check failed",
+      reasons: [],
+      degraded: [],
+      checks: {
+        env: false,
+        database: false,
+        killSwitch: true,
+        stripe: false,
+        cron: false,
+        email: false,
+      },
+      timestamp: new Date().toISOString(),
+    };
+  }
+
   const criticalKeys: (keyof HealthChecks)[] = [
     "env_jwt",
     "env_mongo",
@@ -54,10 +77,12 @@ export async function GET() {
   ];
   const allCriticalOk = criticalKeys.every((k) => checks[k] === "ok" || checks[k] === "skipped");
 
+  const httpOk = allCriticalOk && systemSnapshot.state !== "BLOCKED";
+
   return NextResponse.json(
     {
-      success: allCriticalOk,
-      status: allCriticalOk ? "healthy" : "degraded",
+      success: httpOk,
+      status: systemSnapshot.state === "BLOCKED" ? "blocked" : allCriticalOk ? "healthy" : "degraded",
       envMode: getEnvMode(),
       demo: isDemoMode(),
       checks,
@@ -65,8 +90,17 @@ export async function GET() {
       missingCore: prodReady.missing,
       paymentsReady: payments.ready,
       missingPayments: payments.missing,
+      system: {
+        state: systemSnapshot.state,
+        maintenance: systemSnapshot.state === "BLOCKED",
+        reason: systemSnapshot.reason,
+        reasons: systemSnapshot.reasons,
+        degraded: systemSnapshot.degraded,
+        checks: systemSnapshot.checks,
+        mode: getAppMode(),
+      },
       timestamp: new Date().toISOString(),
     },
-    { status: allCriticalOk ? 200 : 503 }
+    { status: httpOk ? 200 : 503 }
   );
 }

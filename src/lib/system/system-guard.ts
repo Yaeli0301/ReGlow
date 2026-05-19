@@ -4,7 +4,7 @@
 
 import { NextResponse } from "next/server";
 import { getSystemState, type SystemStateSnapshot } from "@/lib/system/system-state";
-import { isExemptFromSystemGuard } from "@/middleware/system-guard";
+import { isExemptFromSystemGuard } from "@/lib/system/edge-guard";
 
 export async function assertSystemReady(pathname: string): Promise<NextResponse | null> {
   if (isExemptFromSystemGuard(pathname)) return null;
