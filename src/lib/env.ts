@@ -9,15 +9,16 @@ export function isDemoMode(): boolean {
   return getEnvMode() === "demo";
 }
 
-/** Allows /demo/start from landing page (local or demo deployment) */
+/** Allows /demo/start from an external landing page link (or full demo deployment). */
 export function canStartLandingDemo(): boolean {
   return isDemoMode() || process.env.ENABLE_LANDING_DEMO === "true";
 }
 
-/** Vercel Atlas integration may expose MONGODB_URI_DEMO_MONGODB_URI when the storage prefix is MONGODB_URI_DEMO. */
+/** Vercel Atlas integration env key patterns (prefix MONGODB_URI_DEMO). */
 const DEMO_MONGO_ENV_KEYS = [
   "MONGODB_URI_DEMO",
   "MONGODB_URI_DEMO_MONGODB_URI",
+  "MONGODB_URI_DEMO_URI",
 ] as const;
 
 /** Strip quotes / whitespace — common when pasting into Vercel env UI. */
@@ -36,16 +37,36 @@ export function isValidMongoUri(uri: string): boolean {
   return /^mongodb(\+srv)?:\/\//.test(sanitizeMongoUri(uri));
 }
 
+function listDemoMongoEnvEntries(): { key: string; uri: string }[] {
+  const seen = new Set<string>();
+  const entries: { key: string; uri: string }[] = [];
+
+  const add = (key: string) => {
+    if (seen.has(key)) return;
+    const raw = process.env[key]?.trim();
+    if (!raw) return;
+    seen.add(key);
+    entries.push({ key, uri: sanitizeMongoUri(raw) });
+  };
+
+  for (const key of DEMO_MONGO_ENV_KEYS) add(key);
+
+  for (const key of Object.keys(process.env)) {
+    if (seen.has(key)) continue;
+    if (!/MONGODB.*DEMO/i.test(key)) continue;
+    add(key);
+  }
+
+  return entries;
+}
+
 export function getDemoMongoEnvKeysPresent(): string[] {
-  return DEMO_MONGO_ENV_KEYS.filter((key) => Boolean(process.env[key]?.trim()));
+  return listDemoMongoEnvEntries().map((e) => e.key);
 }
 
 export function resolveDemoMongoEnv(): { uri: string; key: string } | null {
-  for (const key of DEMO_MONGO_ENV_KEYS) {
-    const raw = process.env[key]?.trim();
-    if (!raw) continue;
-    const uri = sanitizeMongoUri(raw);
-    if (uri) return { uri, key };
+  for (const entry of listDemoMongoEnvEntries()) {
+    if (isValidMongoUri(entry.uri)) return { uri: entry.uri, key: entry.key };
   }
   return null;
 }
@@ -54,24 +75,34 @@ export function getDemoMongoEnvStatus(): {
   key: string | null;
   uriValid: boolean;
   hint: string | null;
+  invalidKeys: string[];
 } {
-  for (const key of DEMO_MONGO_ENV_KEYS) {
-    const raw = process.env[key]?.trim();
-    if (!raw) continue;
-    const uri = sanitizeMongoUri(raw);
-    if (isValidMongoUri(uri)) {
-      return { key, uriValid: true, hint: null };
+  const entries = listDemoMongoEnvEntries();
+  const invalidKeys: string[] = [];
+
+  for (const entry of entries) {
+    if (isValidMongoUri(entry.uri)) {
+      return { key: entry.key, uriValid: true, hint: null, invalidKeys };
     }
+    invalidKeys.push(entry.key);
+  }
+
+  const first = entries[0];
+  if (first) {
+    const preview = first.uri.slice(0, 28).replace(/\/\/([^:]+):([^@]+)@/, "//***:***@");
     return {
-      key,
+      key: first.key,
       uriValid: false,
-      hint: `${key} must start with mongodb:// or mongodb+srv:// (got "${uri.slice(0, 24)}...")`,
+      invalidKeys,
+      hint: `${first.key} is set but not a valid MongoDB URI — must start with mongodb+srv:// (current value starts with "${preview}")`,
     };
   }
+
   return {
     key: null,
     uriValid: false,
-    hint: "Set MONGODB_URI_DEMO to a full Atlas connection string",
+    invalidKeys: [],
+    hint: "Set MONGODB_URI_DEMO to a full Atlas connection string (mongodb+srv://...)",
   };
 }
 
@@ -107,22 +138,20 @@ export function getMongoUriOrThrow(): string {
   }
   if (isDemoMode()) {
     const demo = resolveDemoMongoEnv();
+    if (demo) return demo.uri;
+
     const fallback = sanitizeMongoUri(
       process.env.MONGODB_URI_STANDARD?.trim() ||
         process.env.MONGODB_URI?.trim() ||
         ""
     );
-    const uri = demo?.uri || fallback;
-    if (!uri) {
-      throw new Error("Demo mode: set MONGODB_URI_DEMO or MONGODB_URI");
-    }
-    if (!isValidMongoUri(uri)) {
-      const key = demo?.key ?? "MONGODB_URI";
-      throw new Error(
-        `${key} is not a valid MongoDB URI — must start with mongodb:// or mongodb+srv://`
-      );
-    }
-    return uri;
+    if (isValidMongoUri(fallback)) return fallback;
+
+    const status = getDemoMongoEnvStatus();
+    throw new Error(
+      status.hint ??
+        "Demo mode: set MONGODB_URI_DEMO to mongodb+srv://USER:PASS@CLUSTER.mongodb.net/reglow"
+    );
   }
   // Vercel + Atlas integration: use SRV URI from the platform (not Windows standard string).
   if (process.env.VERCEL) {

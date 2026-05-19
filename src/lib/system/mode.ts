@@ -2,6 +2,8 @@
  * Strict environment mode helpers + demo/production isolation.
  */
 
+import { resolveDemoMongoEnv, sanitizeMongoUri } from "@/lib/env";
+
 export type AppMode = "production" | "demo" | "development";
 
 export function getAppMode(): AppMode {
@@ -45,20 +47,20 @@ export function assertProductionNeverUsesInMemory(): void {
 export function assertDemoDatabaseIsolation(uri: string): void {
   if (!isDemo()) return;
 
-  const prodUri = process.env.MONGODB_URI?.trim();
-  const demoUri = process.env.MONGODB_URI_DEMO?.trim();
+  const prodUri = sanitizeMongoUri(process.env.MONGODB_URI?.trim() || "");
+  const validDemo = resolveDemoMongoEnv();
 
   // Hosted demo: must use separate demo URI or explicit opt-in
   if ((process.env.VERCEL || process.env.RENDER) && prodUri && uri === prodUri) {
-    if (process.env.ALLOW_DEMO_ON_PROD_DB !== "true" && !demoUri) {
+    if (process.env.ALLOW_DEMO_ON_PROD_DB !== "true" && !validDemo) {
       throw new Error(
-        "Demo mode cannot use production MONGODB_URI on hosted deploy. Set MONGODB_URI_DEMO or ALLOW_DEMO_ON_PROD_DB=true"
+        "Demo mode cannot use production MONGODB_URI on hosted deploy. Set MONGODB_URI_DEMO to a valid mongodb+srv:// URI or ALLOW_DEMO_ON_PROD_DB=true"
       );
     }
   }
 
   // Local demo with real Atlas URI without _DEMO suffix — warn via strict check
-  if (!demoUri && prodUri && uri === prodUri && process.env.ALLOW_DEMO_ON_PROD_DB !== "true") {
+  if (!validDemo && prodUri && uri === prodUri && process.env.ALLOW_DEMO_ON_PROD_DB !== "true") {
     if (process.env.NODE_ENV !== "test") {
       // Allow local dev with same DB only when explicitly flagged
       const isLocal = !process.env.VERCEL && !process.env.RENDER;

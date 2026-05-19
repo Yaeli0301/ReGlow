@@ -49,6 +49,7 @@ export async function GET() {
       mongoDemoEnvKeys: getDemoMongoEnvKeysPresent(),
       mongoDemoKey: demoMongo.key,
       mongoDemoUriValid: demoMongo.uriValid,
+      mongoDemoInvalidKeys: demoMongo.invalidKeys,
       mongoConnected,
       mongoConnectionError,
       jwt: jwt.length >= 32,
