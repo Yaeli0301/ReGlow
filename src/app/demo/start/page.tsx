@@ -86,11 +86,25 @@ function DemoStartInner() {
       {error ? (
         <div className="max-w-md text-center">
           <p className="text-red-600">{error}</p>
-          {/mongodb|MONGODB/i.test(error) && (
-            <p className="mt-3 text-sm text-gray-600">
-              יש לתקן את <code className="rounded bg-gray-100 px-1">MONGODB_URI_DEMO</code> ב-Vercel
-              — URI מלא שמתחיל ב-<code className="rounded bg-gray-100 px-1">mongodb+srv://</code>
-            </p>
+          {/mongodb|MONGODB|bad auth|authentication failed/i.test(error) && (
+            <div className="mt-3 space-y-2 text-sm text-gray-600">
+              {/bad auth|authentication failed/i.test(error) ? (
+                <>
+                  <p className="font-semibold text-amber-800">סיסמה או משתמש שגויים ב-MONGODB_URI_DEMO</p>
+                  <ol className="list-inside list-decimal space-y-1 text-start">
+                    <li>Atlas → Database Access → אפסי סיסמה למשתמש</li>
+                    <li>Atlas → Connect → Drivers → העתיקי URI מלא</li>
+                    <li>Vercel → MONGODB_URI_DEMO → הדביקי רק mongodb+srv://...</li>
+                    <li>Redeploy</li>
+                  </ol>
+                </>
+              ) : (
+                <p>
+                  יש לתקן את <code className="rounded bg-gray-100 px-1">MONGODB_URI_DEMO</code> ב-Vercel
+                  — URI מלא שמתחיל ב-<code className="rounded bg-gray-100 px-1">mongodb+srv://</code>
+                </p>
+              )}
+            </div>
           )}
           <div className="mt-4 flex flex-col gap-2">
             <button

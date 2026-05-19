@@ -14,11 +14,11 @@ export function canStartLandingDemo(): boolean {
   return isDemoMode() || process.env.ENABLE_LANDING_DEMO === "true";
 }
 
-/** Vercel Atlas integration env key patterns (prefix MONGODB_URI_DEMO). */
+/** Vercel Atlas integration — prefer auto-injected URI over manual MONGODB_URI_DEMO. */
 const DEMO_MONGO_ENV_KEYS = [
-  "MONGODB_URI_DEMO",
   "MONGODB_URI_DEMO_MONGODB_URI",
   "MONGODB_URI_DEMO_URI",
+  "MONGODB_URI_DEMO",
 ] as const;
 
 /** Strip quotes, env prefixes, and extract URI from common Vercel paste mistakes. */
@@ -49,6 +49,19 @@ export function sanitizeMongoUri(raw: string): string {
 
 export function isValidMongoUri(uri: string): boolean {
   return /^mongodb(\+srv)?:\/\//.test(sanitizeMongoUri(uri));
+}
+
+/** Safe URI metadata for setup/status (no password). */
+export function parseMongoUriPublic(uri: string): {
+  user: string | null;
+  host: string | null;
+} {
+  const clean = sanitizeMongoUri(uri);
+  const withAuth = clean.match(/^mongodb(?:\+srv)?:\/\/([^:]+):[^@]+@([^/?]+)/);
+  if (withAuth) return { user: withAuth[1], host: withAuth[2] };
+  const hostOnly = clean.match(/^mongodb(?:\+srv)?:\/\/([^/?]+)/);
+  if (hostOnly) return { user: null, host: hostOnly[1] };
+  return { user: null, host: null };
 }
 
 function listDemoMongoEnvEntries(): { key: string; uri: string }[] {

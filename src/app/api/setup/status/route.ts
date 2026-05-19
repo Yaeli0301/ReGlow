@@ -5,6 +5,7 @@ import {
   getDemoMongoEnvKeysPresent,
   getDemoMongoEnvStatus,
   isValidMongoUri,
+  parseMongoUriPublic,
   sanitizeMongoUri,
 } from "@/lib/env";
 import { isStripeConfigured } from "@/lib/stripe-config";
@@ -19,6 +20,8 @@ export async function GET() {
   const payments = arePaymentsReady();
 
   const demoMongo = getDemoMongoEnvStatus();
+  const demoUri = getLandingDemoMongoUri();
+  const demoMeta = demoUri ? parseMongoUriPublic(demoUri) : { user: null, host: null };
   let mongoConnected = false;
   let mongoConnectionError: string | null = demoMongo.hint;
 
@@ -50,6 +53,8 @@ export async function GET() {
       mongoDemoKey: demoMongo.key,
       mongoDemoUriValid: demoMongo.uriValid,
       mongoDemoInvalidKeys: demoMongo.invalidKeys,
+      mongoDemoUser: demoMeta.user,
+      mongoDemoHost: demoMeta.host,
       mongoConnected,
       mongoConnectionError,
       jwt: jwt.length >= 32,
