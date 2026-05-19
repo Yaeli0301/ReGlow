@@ -4,6 +4,7 @@
  */
 
 import { getAppMode, isProduction } from "@/lib/system/mode";
+import { getLandingDemoMongoUri } from "@/lib/env";
 
 export interface EnvCheck {
   key: string;
@@ -41,10 +42,8 @@ function checkKey(key: string, minLen = 1): EnvCheck {
     if (!/^mongodb(\+srv)?:\/\//.test(raw)) {
       valid = false;
       reason = "not a valid MongoDB URI";
-    } else if (!mongoUriHasDbName(raw)) {
-      valid = false;
-      reason = "URI must include database name (e.g. /reglow) or use dbName fallback";
     }
+    // URI without /reglow is OK — connectDB sets dbName: "reglow" (see src/lib/mongodb.ts)
   } else if (key === "NEXT_PUBLIC_APP_URL") {
     if (!/^https?:\/\//.test(raw)) {
       valid = false;
@@ -112,10 +111,19 @@ export function validateEnv(): EnvValidationResult {
 
   const mode = getAppMode();
 
-  // Critical — always required for production runtime
-  for (const key of ["JWT_SECRET", "MONGODB_URI"] as const) {
-    const c = checks.find((x) => x.key === key)!;
-    if (!c.valid) blocking.push(`${key} (${c.reason})`);
+  // Critical — JWT always required; Mongo required unless demo DB URI is configured
+  const jwtCheck = checks.find((x) => x.key === "JWT_SECRET")!;
+  if (!jwtCheck.valid) blocking.push(`JWT_SECRET (${jwtCheck.reason})`);
+
+  const mongoCheck = checks.find((x) => x.key === "MONGODB_URI")!;
+  const hasDemoMongo = Boolean(getLandingDemoMongoUri());
+  const mongoRequired = mode === "production" || !hasDemoMongo;
+  if (mongoRequired && !mongoCheck.valid) {
+    blocking.push(`MONGODB_URI (${mongoCheck.reason})`);
+  } else if (mongoRequired && mongoCheck.valid && !mongoUriHasDbName(process.env.MONGODB_URI || "")) {
+    degraded.push("MONGODB_URI has no database path — using dbName reglow");
+  } else if (mode !== "production" && hasDemoMongo && !mongoCheck.valid) {
+    degraded.push("MONGODB_URI not set — using MONGODB_URI_DEMO");
   }
 
   if (mode === "production") {

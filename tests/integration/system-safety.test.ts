@@ -54,6 +54,19 @@ describe("system safety", () => {
       );
     });
 
+    it("MONGODB_URI without db path is valid (reglow dbName fallback)", () => {
+      const orig = process.env.MONGODB_URI;
+      process.env.MONGODB_URI =
+        "mongodb+srv://user:pass@cluster.mongodb.net/?retryWrites=true&w=majority";
+      process.env.ENV_MODE = "production";
+      const mongo = validateEnv().checks.find((c) => c.key === "MONGODB_URI")!;
+      expect(mongo.valid).toBe(true);
+      expect(validateEnv().blocking.some((b) => b.startsWith("MONGODB_URI"))).toBe(
+        false
+      );
+      process.env.MONGODB_URI = orig;
+    });
+
     it("assertEnvValid does not throw in test (non-production mode)", () => {
       const orig = process.env.ENV_MODE;
       process.env.ENV_MODE = "demo";
