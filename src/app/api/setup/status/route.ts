@@ -1,5 +1,12 @@
 import { NextResponse } from "next/server";
-import { getEnvMode, getLandingDemoMongoUri, getDemoMongoEnvKeysPresent } from "@/lib/env";
+import {
+  getEnvMode,
+  getLandingDemoMongoUri,
+  getDemoMongoEnvKeysPresent,
+  getDemoMongoEnvStatus,
+  isValidMongoUri,
+  sanitizeMongoUri,
+} from "@/lib/env";
 import { isStripeConfigured } from "@/lib/stripe-config";
 import { isProductionReady, arePaymentsReady } from "@/lib/production-guard";
 
@@ -11,13 +18,21 @@ export async function GET() {
   const core = isProductionReady();
   const payments = arePaymentsReady();
 
+  const demoMongo = getDemoMongoEnvStatus();
   let mongoConnected = false;
-  try {
-    const { connectDB } = await import("@/lib/mongodb");
-    await connectDB();
-    mongoConnected = true;
-  } catch {
-    mongoConnected = false;
+  let mongoConnectionError: string | null = demoMongo.hint;
+
+  if (demoMongo.uriValid || isValidMongoUri(sanitizeMongoUri(process.env.MONGODB_URI || ""))) {
+    try {
+      const { connectDB } = await import("@/lib/mongodb");
+      await connectDB();
+      mongoConnected = true;
+      mongoConnectionError = null;
+    } catch (error) {
+      mongoConnected = false;
+      mongoConnectionError =
+        error instanceof Error ? error.message : "MongoDB connection failed";
+    }
   }
 
   return NextResponse.json({
@@ -32,7 +47,10 @@ export async function GET() {
       mongo: Boolean(process.env.MONGODB_URI?.trim() || getLandingDemoMongoUri()),
       mongoDemo: Boolean(getLandingDemoMongoUri()),
       mongoDemoEnvKeys: getDemoMongoEnvKeysPresent(),
+      mongoDemoKey: demoMongo.key,
+      mongoDemoUriValid: demoMongo.uriValid,
       mongoConnected,
+      mongoConnectionError,
       jwt: jwt.length >= 32,
       cron: (process.env.CRON_SECRET?.trim() || "").length >= 16,
       stripe: isStripeConfigured(),

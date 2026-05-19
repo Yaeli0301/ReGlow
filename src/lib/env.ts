@@ -20,16 +20,59 @@ const DEMO_MONGO_ENV_KEYS = [
   "MONGODB_URI_DEMO_MONGODB_URI",
 ] as const;
 
+/** Strip quotes / whitespace — common when pasting into Vercel env UI. */
+export function sanitizeMongoUri(raw: string): string {
+  let uri = raw.trim();
+  if (
+    (uri.startsWith('"') && uri.endsWith('"')) ||
+    (uri.startsWith("'") && uri.endsWith("'"))
+  ) {
+    uri = uri.slice(1, -1).trim();
+  }
+  return uri;
+}
+
+export function isValidMongoUri(uri: string): boolean {
+  return /^mongodb(\+srv)?:\/\//.test(sanitizeMongoUri(uri));
+}
+
 export function getDemoMongoEnvKeysPresent(): string[] {
   return DEMO_MONGO_ENV_KEYS.filter((key) => Boolean(process.env[key]?.trim()));
 }
 
 export function resolveDemoMongoEnv(): { uri: string; key: string } | null {
   for (const key of DEMO_MONGO_ENV_KEYS) {
-    const uri = process.env[key]?.trim();
+    const raw = process.env[key]?.trim();
+    if (!raw) continue;
+    const uri = sanitizeMongoUri(raw);
     if (uri) return { uri, key };
   }
   return null;
+}
+
+export function getDemoMongoEnvStatus(): {
+  key: string | null;
+  uriValid: boolean;
+  hint: string | null;
+} {
+  for (const key of DEMO_MONGO_ENV_KEYS) {
+    const raw = process.env[key]?.trim();
+    if (!raw) continue;
+    const uri = sanitizeMongoUri(raw);
+    if (isValidMongoUri(uri)) {
+      return { key, uriValid: true, hint: null };
+    }
+    return {
+      key,
+      uriValid: false,
+      hint: `${key} must start with mongodb:// or mongodb+srv:// (got "${uri.slice(0, 24)}...")`,
+    };
+  }
+  return {
+    key: null,
+    uriValid: false,
+    hint: "Set MONGODB_URI_DEMO to a full Atlas connection string",
+  };
 }
 
 /** Separate demo DB for landing demos in production (Vercel). */
@@ -64,12 +107,20 @@ export function getMongoUriOrThrow(): string {
   }
   if (isDemoMode()) {
     const demo = resolveDemoMongoEnv();
-    const uri =
-      demo?.uri ||
-      process.env.MONGODB_URI_STANDARD ||
-      process.env.MONGODB_URI;
+    const fallback = sanitizeMongoUri(
+      process.env.MONGODB_URI_STANDARD?.trim() ||
+        process.env.MONGODB_URI?.trim() ||
+        ""
+    );
+    const uri = demo?.uri || fallback;
     if (!uri) {
       throw new Error("Demo mode: set MONGODB_URI_DEMO or MONGODB_URI");
+    }
+    if (!isValidMongoUri(uri)) {
+      const key = demo?.key ?? "MONGODB_URI";
+      throw new Error(
+        `${key} is not a valid MongoDB URI — must start with mongodb:// or mongodb+srv://`
+      );
     }
     return uri;
   }
