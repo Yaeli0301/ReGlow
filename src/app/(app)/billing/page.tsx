@@ -7,6 +7,7 @@ import type { SessionUser, SubscriptionTier } from "@/types";
 import { ServicesManager } from "@/components/billing/ServicesManager";
 import { ReferralPanel } from "@/components/referral/ReferralPanel";
 import { useLanguage, useT } from "@/contexts/LanguageContext";
+import { useDemoMode } from "@/contexts/AppUserContext";
 import { getTranslatedPlans, tierLabel } from "@/i18n/plans";
 
 export default function BillingPage() {
@@ -14,6 +15,7 @@ export default function BillingPage() {
   const t = useT();
   const { locale } = useLanguage();
   const plans = useMemo(() => getTranslatedPlans(locale), [locale]);
+  const demoMode = useDemoMode();
 
   const [user, setUser] = useState<SessionUser | null>(null);
   const [rewardMonths, setRewardMonths] = useState(0);
@@ -108,6 +110,13 @@ export default function BillingPage() {
         </div>
       )}
 
+      {demoMode && (
+        <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+          <p className="font-semibold">{t("billing.demoBlockedTitle")}</p>
+          <p className="mt-1">{t("billing.demoBlockedDesc")}</p>
+        </div>
+      )}
+
       {stripeConfigured === false && (
         <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
           {t("billing.stripeNotConfigured")}
@@ -168,8 +177,8 @@ export default function BillingPage() {
                 className="mt-6 w-full"
                 variant={isPopular ? "primary" : "secondary"}
                 loading={loading === plan.id}
-                disabled={isCurrent}
-                onClick={() => handleCheckout(plan.id)}
+                disabled={isCurrent || demoMode}
+                onClick={() => !demoMode && handleCheckout(plan.id)}
               >
                 {isCurrent ? t("billing.currentPlanBtn") : `${t("billing.choosePlan")} ${plan.name}`}
               </Button>
@@ -180,7 +189,12 @@ export default function BillingPage() {
 
       {currentTier !== "none" && (
         <div className="mt-8">
-          <Button variant="secondary" loading={loading === "portal"} onClick={handlePortal}>
+          <Button
+            variant="secondary"
+            loading={loading === "portal"}
+            disabled={demoMode}
+            onClick={() => !demoMode && handlePortal()}
+          >
             {t("billing.manageSubscription")}
           </Button>
         </div>
@@ -193,8 +207,8 @@ export default function BillingPage() {
             <p className="mt-2 text-sm text-gray-600">{t("billing.shareBooking")}</p>
             <code className="mt-2 block break-all rounded-lg bg-brand-50 p-3 text-sm text-brand-700">
               {typeof window !== "undefined"
-                ? `${window.location.origin}/book/${user.id}`
-                : `/book/${user.id}`}
+                ? `${window.location.origin}/booking/${user.id}`
+                : `/booking/${user.id}`}
             </code>
           </div>
           <ServicesManager />
