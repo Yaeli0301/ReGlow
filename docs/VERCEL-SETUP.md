@@ -44,13 +44,13 @@ mongodb+srv://USER:PASSWORD@CLUSTER.mongodb.net/reglow?retryWrites=true&w=majori
 
 | Key | Value |
 |-----|--------|
-| `MONGODB_URI` | מחרוזת Atlas (רצוי עם `/reglow`) |
+| `MONGODB_URI` | מחרוזת Atlas לפרודקשן בלבד (רצוי עם `/reglow`) — **לא** `MONGODB_URI_DEMO` |
 | `JWT_SECRET` | מחרוזת אקראית 32+ תווים (שונה ממקומי!) |
 | `ENV_MODE` | `production` |
 | `NEXT_PUBLIC_APP_URL` | `https://re-glow-vhp6.vercel.app` |
 | `CRON_SECRET` | מחרוזת אקראית 16+ תווים |
-| `ENABLE_LANDING_DEMO` | `true` — מאפשר דמו רק מקישור חיצוני ל־`/demo/start` (לא מוצג באתר הראשי) |
-| `MONGODB_URI_DEMO` | DB נפרד לדמו מהנחיתה (חובה עם `ENABLE_LANDING_DEMO`) |
+
+**אל תגדירי** `ENABLE_LANDING_DEMO` בפרויקט הזה. הדמו רץ בפרויקט Vercel **נפרד**.
 
 Analytics + דוחות (אופציונלי, מומלץ):
 
@@ -75,20 +75,21 @@ Stripe (כשמוכן):
 
 **Save** → **Deployments** → פריסה **חדשה** מ-`main` (Redeploy על פריסה קיימת לא ידחוף קוד חדש מ-Git).
 
-### דמו רק מדף נחיתה חיצוני
+### ארכיטקטורה: פרודקשן + דמו נפרדים
 
-באתר הראשי (`/`) אין כפתור דמו — רק הרשמה והתחברות.
+| פרויקט | תפקיד | ENV |
+|--------|--------|-----|
+| **ReGlow (זה)** | לקוחות אמיתיים, הרשמה, תשלום | `ENV_MODE=production`, `MONGODB_URI` |
+| **ReGlow Demo** (Vercel נפרד) | הדגמה בלבד | `ENV_MODE=demo`, `MONGODB_URI_DEMO` |
+| **דף נחיתה חיצוני** (Wix וכו') | שיווק + כפתור דמו | מקשר לכתובת **פרויקט הדמו** |
 
-**מסלול מומלץ למבקרות:**
+**באתר הפרודקשן (`/`):** רק הרשמה והתחברות — **בלי דמו**.
 
-1. דף הנחיתה **החיצוני** שלך (Wix / וכו') — מסבירים את המוצר  
-2. כפתור **"נסו דמו"** →  
-   `https://re-glow-vhp6.vercel.app/demo/start?plan=pro`  
-3. בתוך הדמו — באנר **"מוכנה? הירשמו לחשבון אמיתי"** → `/register`  
-4. (אופציונלי) בדף הנחיתה גם קישור ישיר **"הירשמו עכשיו"** למי שכבר מוכנה:  
-   `https://re-glow-vhp6.vercel.app/register`
+**בדף הנחיתה החיצוני:** כפתור "נסו דמו" →  
+`https://<your-demo-project>.vercel.app/demo/start?plan=pro`
 
-דרושים: `ENABLE_LANDING_DEMO=true` + `MONGODB_URI_DEMO` (DB נפרד מלקוחות אמיתיים).
+**הרשמה אמיתית:**  
+`https://re-glow-vhp6.vercel.app/register`
 
 ## 3. בדיקה אחרי Redeploy
 

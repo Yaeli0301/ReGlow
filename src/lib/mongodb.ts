@@ -1,6 +1,5 @@
 import mongoose from "mongoose";
 import { getMongoUriOrThrow, shouldUseInMemoryMongo } from "@/lib/env";
-import { getLandingDemoMongoUri } from "@/lib/env";
 import { isDemo } from "@/lib/system/mode";
 import { assertEnvValid } from "@/lib/system/env-validator";
 import { assertDemoDatabaseIsolation } from "@/lib/system/mode";
@@ -15,8 +14,6 @@ declare global {
   // eslint-disable-next-line no-var
   var mongooseCache: MongooseCache | undefined;
   // eslint-disable-next-line no-var
-  var landingDemoMongooseCache: MongooseCache | undefined;
-  // eslint-disable-next-line no-var
   var demoMemoryServer: { stop(): Promise<boolean> } | null | undefined;
   // eslint-disable-next-line no-var
   var demoMemoryStartPromise: Promise<string> | undefined;
@@ -24,10 +21,6 @@ declare global {
 
 const cached: MongooseCache = global.mongooseCache ?? { conn: null, promise: null };
 global.mongooseCache = cached;
-
-const landingDemoCached: MongooseCache =
-  global.landingDemoMongooseCache ?? { conn: null, promise: null };
-global.landingDemoMongooseCache = landingDemoCached;
 
 async function connectWithUri(uri: string, target: MongooseCache): Promise<typeof mongoose> {
   if (target.conn) return target.conn;
@@ -89,16 +82,6 @@ async function attachVercelDatabasePool(): Promise<void> {
 }
 
 export async function connectDB(): Promise<typeof mongoose> {
-  const isTest = process.env.NODE_ENV === "test" || process.env.VITEST === "true";
-  if (!isTest) {
-    const { getSession } = await import("@/lib/auth");
-    const { isLandingDemoVisitor } = await import("@/lib/landing-demo-session");
-    const session = await getSession();
-    if (isLandingDemoVisitor(session)) {
-      return connectLandingDemoDB();
-    }
-  }
-
   if (cached.conn) return cached.conn;
 
   assertEnvValid();
@@ -125,43 +108,6 @@ export async function connectDB(): Promise<typeof mongoose> {
     cached.promise = null;
     cached.conn = null;
     logger.error("Database connection failed", {
-      err: error instanceof Error ? error.message : String(error),
-    });
-    throw error;
-  }
-}
-
-/** Landing-page demo on production Vercel — uses MONGODB_URI_DEMO, not production DB. */
-export async function connectLandingDemoDB(): Promise<typeof mongoose> {
-  const uri = getLandingDemoMongoUri();
-  if (!uri) {
-    throw new Error("MONGODB_URI_DEMO is required for landing demo");
-  }
-
-  if (landingDemoCached.conn) {
-    if (!global.demoSeeded) {
-      const { ensureDemoSeeded } = await import("@/lib/seed/demo-seed");
-      await ensureDemoSeeded();
-      global.demoSeeded = true;
-    }
-    return landingDemoCached.conn;
-  }
-
-  try {
-    await connectWithUri(uri, landingDemoCached);
-    logger.info("Landing demo database connected");
-
-    if (!global.demoSeeded) {
-      const { ensureDemoSeeded } = await import("@/lib/seed/demo-seed");
-      await ensureDemoSeeded();
-      global.demoSeeded = true;
-    }
-
-    return landingDemoCached.conn!;
-  } catch (error) {
-    landingDemoCached.promise = null;
-    landingDemoCached.conn = null;
-    logger.error("Landing demo database connection failed", {
       err: error instanceof Error ? error.message : String(error),
     });
     throw error;

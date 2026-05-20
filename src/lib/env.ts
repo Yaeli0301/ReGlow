@@ -1,5 +1,3 @@
-import { DEMO_OWNER_EMAIL } from "@/lib/seed/demo-constants";
-
 export type EnvMode = "demo" | "production";
 
 export function getEnvMode(): EnvMode {
@@ -11,14 +9,14 @@ export function isDemoMode(): boolean {
   return getEnvMode() === "demo";
 }
 
-/** Allows /api/demo/start (production landing demo DB or full demo deployment). */
-export function canStartLandingDemo(): boolean {
-  return isDemoMode() || process.env.ENABLE_LANDING_DEMO === "true";
+/** Demo APIs (/api/demo/*) — only on the separate demo deployment (ENV_MODE=demo). */
+export function canRunDemoEndpoints(): boolean {
+  return isDemoMode();
 }
 
-/** "Try demo" button — public landing page only, not inside the logged-in app. */
-export function shouldShowLandingDemoCta(): boolean {
-  return !isDemoMode() && process.env.ENABLE_LANDING_DEMO === "true";
+/** @deprecated use canRunDemoEndpoints */
+export function canStartLandingDemo(): boolean {
+  return canRunDemoEndpoints();
 }
 
 /** Vercel Atlas integration — prefer auto-injected URI over manual MONGODB_URI_DEMO. */
@@ -157,13 +155,10 @@ export function getDemoMongoEnvStatus(): {
   };
 }
 
-/** Separate demo DB for landing demos in production (Vercel). */
+/** Demo deployment Mongo URI (MONGODB_URI_DEMO). Not used on production deploy. */
 export function getLandingDemoMongoUri(): string | null {
+  if (!isDemoMode()) return null;
   return resolveDemoMongoEnv()?.uri ?? null;
-}
-
-export function shouldUseLandingDemoDatabase(): boolean {
-  return canStartLandingDemo() && Boolean(getLandingDemoMongoUri());
 }
 
 /** In-memory Mongo for local demo (set DEMO_USE_MEMORY=true when Atlas is unreachable). */
@@ -235,11 +230,9 @@ export function getMongoUriOrThrow(): string {
   return ensureAtlasConnectionUri(uri);
 }
 
-/** Block Stripe checkout on demo deploy or landing-demo visitor. */
-export function shouldBlockPaidCheckout(userEmail?: string | null): boolean {
-  if (isDemoMode()) return true;
-  if (shouldUseLandingDemoDatabase() && userEmail === DEMO_OWNER_EMAIL) return true;
-  return false;
+/** Block Stripe checkout on the demo deployment only. */
+export function shouldBlockPaidCheckout(): boolean {
+  return isDemoMode();
 }
 
 export function isRealPaymentsEnabled(): boolean {

@@ -4,11 +4,7 @@ import Link from "next/link";
 import { useT } from "@/contexts/LanguageContext";
 import { LanguageSwitcher } from "@/components/ui/LanguageSwitcher";
 
-interface LandingPageProps {
-  showDemoCta?: boolean;
-}
-
-export function LandingPage({ showDemoCta = false }: LandingPageProps) {
+export function LandingPage() {
   const t = useT();
 
   const features = [
@@ -65,14 +61,6 @@ export function LandingPage({ showDemoCta = false }: LandingPageProps) {
             <Link href="/register" className="btn-primary px-8 py-3 text-base sm:min-w-[200px]">
               {t("landing.cta")} →
             </Link>
-            {showDemoCta && (
-              <Link
-                href="/demo/start?plan=pro"
-                className="btn-secondary px-8 py-3 text-base sm:min-w-[200px]"
-              >
-                {t("landing.tryDemo")} →
-              </Link>
-            )}
             <Link href="/login" className="btn-secondary px-8 py-3 text-base sm:min-w-[160px]">
               {t("landing.signIn")}
             </Link>

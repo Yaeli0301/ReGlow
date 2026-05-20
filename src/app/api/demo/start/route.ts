@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { connectDB, connectLandingDemoDB } from "@/lib/mongodb";
-import { canStartLandingDemo, isDemoMode, shouldUseLandingDemoDatabase } from "@/lib/env";
+import { connectDB } from "@/lib/mongodb";
+import { canRunDemoEndpoints, isDemoMode } from "@/lib/env";
 import { jsonWithAuthCookie } from "@/lib/auth-cookie";
 import { User } from "@/models/User";
 import { buildSessionUser, signToken } from "@/lib/auth";
@@ -18,23 +18,19 @@ const schema = z.object({
 
 export async function POST(request: Request) {
   try {
-    if (!canStartLandingDemo()) {
+    if (!canRunDemoEndpoints()) {
       throw new AppError({
         code: "DEMO_ONLY",
-        message: "Demo start only in demo mode",
+        message: "Demo endpoints only on demo deployment",
         userMessage:
-          "הדגמה לא פעילה — הגדירי ENABLE_LANDING_DEMO=true ב-Vercel",
+          "הדמו לא זמין באתר הזה — השתמשי בפרויקט הדמו הנפרד (קישור מדף הנחיתה החיצוני).",
       });
     }
 
     const parsed = schema.safeParse(await request.json().catch(() => ({})));
     const plan: SubscriptionTier = parsed.success ? parsed.data.plan : "pro";
 
-    if (!isDemoMode() && shouldUseLandingDemoDatabase()) {
-      await connectLandingDemoDB();
-    } else {
-      await connectDB();
-    }
+    await connectDB();
     await ensureDemoSeeded();
 
     const user = await User.findOne({ email: DEMO_OWNER_EMAIL });

@@ -20,7 +20,7 @@ export async function POST(request: Request) {
   if (auth instanceof NextResponse) return auth;
 
   try {
-    if (shouldBlockPaidCheckout(auth.user.email)) {
+    if (shouldBlockPaidCheckout()) {
       return NextResponse.json(
         {
           error: "בדמו אין תשלום אמיתי — החליפי חבילה מהבאנר או מדף המנוי",

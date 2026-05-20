@@ -53,7 +53,7 @@ console.log("  NEXT_PUBLIC_APP_URL=https://re-glow.vercel.app");
 console.log("  MONGODB_URI=<mongodb+srv מ-Atlas או אינטגרציית Vercel>");
 console.log("  JWT_SECRET=<node scripts/generate-secrets.mjs>");
 console.log("  CRON_SECRET=<אותו סקריפט>");
-console.log("  ENABLE_LANDING_DEMO=true   ← דמו מהדף נחיתה למכירה");
+console.log("  (no ENABLE_LANDING_DEMO — demo is a separate Vercel project)");
 console.log("\nStripe (למכירה אמיתית): מפתחות live + Price IDs + webhook\n");
 
 async function remote(path) {

@@ -14,7 +14,6 @@ const KEYS = [
   "MONGODB_URI_STANDARD",
   "JWT_SECRET",
   "ENV_MODE",
-  "ENABLE_LANDING_DEMO",
   "NEXT_PUBLIC_APP_URL",
   "CRON_SECRET",
   "STRIPE_SECRET_KEY",
@@ -51,7 +50,6 @@ for (const key of KEYS) {
   if (!value) continue;
   if (key === "NEXT_PUBLIC_APP_URL") value = productionUrl;
   if (key === "ENV_MODE") value = "production";
-  if (key === "ENABLE_LANDING_DEMO" && !value) value = "true";
   if (key === "MONGODB_URI_STANDARD" && env.MONGODB_URI) continue;
   console.log("Setting", key, "...");
   try {

@@ -27,6 +27,13 @@ export function resolveAppOrigin(request?: Request): string {
   return "http://localhost:3000";
 }
 
+/** Optional: URL of the separate demo Vercel project (for messages on production). */
+export function getDemoSiteUrl(): string | null {
+  const base = process.env.NEXT_PUBLIC_DEMO_SITE_URL?.trim().replace(/\/$/, "");
+  if (base && /^https?:\/\//i.test(base)) return base;
+  return null;
+}
+
 /** Real production signup (demo deploy should set NEXT_PUBLIC_PRODUCTION_URL). */
 export function getProductionSignupUrl(): string {
   const base = process.env.NEXT_PUBLIC_PRODUCTION_URL?.trim().replace(/\/$/, "");

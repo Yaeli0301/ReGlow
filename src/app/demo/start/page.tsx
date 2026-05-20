@@ -1,6 +1,7 @@
 "use client";
 
 import { persistAuthClient } from "@/lib/client-auth";
+import { getDemoSiteUrl } from "@/lib/app-url";
 import { resetDemoUpsellSegment } from "@/lib/demo/demo-upsell-timer";
 import type { SessionUser, SubscriptionTier, UserRole } from "@/types";
 import { useSearchParams } from "next/navigation";
@@ -116,9 +117,17 @@ function DemoStartInner() {
             >
               נסי שוב
             </button>
-            <a href="/login" className="text-sm text-gray-500 underline">
-              חזרה להתחברות
+            <a href="/" className="text-sm text-gray-500 underline">
+              חזרה לדף הבית (פרודקשן)
             </a>
+            {getDemoSiteUrl() && (
+              <a
+                href={`${getDemoSiteUrl()}/demo/start?plan=${plan}`}
+                className="text-sm font-semibold text-brand-600 underline"
+              >
+                לפתוח דמו בפרויקט הנפרד →
+              </a>
+            )}
           </div>
         </div>
       ) : (

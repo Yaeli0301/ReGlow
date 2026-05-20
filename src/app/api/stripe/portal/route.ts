@@ -8,7 +8,7 @@ export async function POST(request: Request) {
   const auth = await requireAuthFromRequest(request, { loadDbUser: true });
   if (auth instanceof NextResponse) return auth;
 
-  if (shouldBlockPaidCheckout(auth.user.email)) {
+  if (shouldBlockPaidCheckout()) {
     return NextResponse.json(
       { error: "בדמו אין ניהול מנוי ב-Stripe", code: "DEMO_PORTAL_BLOCKED" },
       { status: 403 }
