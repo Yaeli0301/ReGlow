@@ -4,12 +4,11 @@ import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { SubscriptionGate } from "@/components/billing/SubscriptionGate";
-import { useAppUser, useDemoMode } from "@/contexts/AppUserContext";
+import { useAppUser } from "@/contexts/AppUserContext";
 import { canAccess } from "@/lib/subscription";
 
 export default function BrandingPage() {
   const user = useAppUser();
-  const demoMode = useDemoMode();
   const hasPro = canAccess(user.subscriptionTier, "appointments");
   const hasBooking = canAccess(user.subscriptionTier, "booking");
   const [businessName, setBusinessName] = useState(user.businessName);
@@ -90,7 +89,7 @@ export default function BrandingPage() {
                 href="/billing"
                 className="font-semibold underline"
               >
-                {demoMode ? "נסי Premium בדמו" : "שדרוג ל-Premium"}
+                שדרוג ל-Premium
               </a>
             </p>
           )}

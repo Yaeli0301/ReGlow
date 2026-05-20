@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
@@ -14,15 +14,6 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [demoMode, setDemoMode] = useState(false);
-
-  useEffect(() => {
-    fetch("/api/demo/status")
-      .then((r) => r.json())
-      .then((d) => setDemoMode(Boolean(d.demo)))
-      .catch(() => setDemoMode(false));
-  }, []);
-
   async function completeLogin(data: {
     token?: string;
     user?: { id: string; email: string; role: "admin" | "business"; businessName?: string; subscriptionTier?: string };
@@ -148,32 +139,6 @@ export default function LoginPage() {
         <h1 className="mt-6 text-2xl font-bold">{t("auth.welcomeBack")}</h1>
         <p className="mt-1 text-sm text-gray-500">{t("auth.signInSubtitle")}</p>
 
-        {demoMode && (
-          <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-            <p className="font-medium">{t("auth.demoModeTitle")}</p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              <Button
-                type="button"
-                variant="secondary"
-                className="text-xs"
-                onClick={() => handleDemoLogin("business")}
-                disabled={loading}
-              >
-                {t("auth.demoBusiness")}
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                className="text-xs"
-                onClick={() => handleDemoLogin("admin")}
-                disabled={loading}
-              >
-                {t("auth.demoAdmin")}
-              </Button>
-            </div>
-          </div>
-        )}
-
         <form onSubmit={handleSubmit} className="mt-8 space-y-4">
           <Input
             label={t("auth.email")}
@@ -181,7 +146,6 @@ export default function LoginPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            disabled={demoMode && loading}
           />
           <Input
             label={t("auth.password")}
@@ -189,7 +153,6 @@ export default function LoginPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            disabled={demoMode && loading}
           />
           {error && <p className="text-sm text-red-500">{error}</p>}
           <Button type="submit" loading={loading} className="w-full">

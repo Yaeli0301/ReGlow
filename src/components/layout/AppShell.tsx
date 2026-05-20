@@ -11,8 +11,6 @@ import { AppUserProvider } from "@/contexts/AppUserContext";
 import { hasActiveSubscription, canAccess } from "@/lib/subscription";
 import type { PLAN_FEATURES } from "@/types";
 import dynamic from "next/dynamic";
-import { DemoModeBanner } from "@/components/demo/DemoModeBanner";
-import { DemoUpsellModal } from "@/components/demo/DemoUpsellModal";
 import { MaintenanceBanner } from "@/components/system/MaintenanceBanner";
 import { MobileBottomNav } from "./MobileBottomNav";
 
@@ -44,27 +42,13 @@ const TIER_LABELS: Record<SubscriptionTier, { he: string; en: string }> = {
 export function AppShell({
   user,
   children,
-  demoMode = false,
-  landingDemo = false,
-  demoEmail,
 }: {
   user: SessionUser;
   children: React.ReactNode;
-  demoMode?: boolean;
-  /** Visitor came from external landing → /demo/start (show register CTA). */
-  landingDemo?: boolean;
-  demoEmail?: string;
 }) {
   return (
-    <AppUserProvider user={user} demoMode={demoMode}>
-      <AppShellInner
-        user={user}
-        demoMode={demoMode}
-        landingDemo={landingDemo}
-        demoEmail={demoEmail}
-      >
-        {children}
-      </AppShellInner>
+    <AppUserProvider user={user}>
+      <AppShellInner user={user}>{children}</AppShellInner>
     </AppUserProvider>
   );
 }
@@ -72,15 +56,9 @@ export function AppShell({
 function AppShellInner({
   user,
   children,
-  demoMode,
-  landingDemo = false,
-  demoEmail,
 }: {
   user: SessionUser;
   children: React.ReactNode;
-  demoMode?: boolean;
-  landingDemo?: boolean;
-  demoEmail?: string;
 }) {
   const pathname = usePathname();
   const { logout, roleLabel, welcomeLabel, isAdmin } = useAuth();
@@ -270,15 +248,8 @@ function AppShellInner({
 
         <div className="flex-1 px-4 py-4 pb-24 md:px-10 md:py-8 md:pb-8 lg:p-8">
           <MaintenanceBanner />
-          <DemoModeBanner
-            demo={demoMode}
-            landingDemo={landingDemo}
-            demoEmail={demoEmail}
-            subscriptionTier={user.subscriptionTier}
-          />
-          <UpgradeBanner tier={user.subscriptionTier} demoMode={demoMode} />
+          <UpgradeBanner tier={user.subscriptionTier} />
           <PendingCashPaymentsSlot />
-          <DemoUpsellModal active={demoMode} />
           {children}
         </div>
         {!isAdmin && <MobileBottomNav user={user} />}

@@ -1,7 +1,7 @@
 "use client";
 
 import { WinBackFlow } from "@/components/recover/WinBackFlow";
-import { useAppUser, useDemoMode } from "@/contexts/AppUserContext";
+import { useAppUser } from "@/contexts/AppUserContext";
 import { canAccess } from "@/lib/subscription";
 import { useT } from "@/contexts/LanguageContext";
 import Link from "next/link";
@@ -9,7 +9,6 @@ import Link from "next/link";
 export default function RecoverClientsPage() {
   const t = useT();
   const user = useAppUser();
-  const demoMode = useDemoMode();
   const hasAccess = canAccess(user.subscriptionTier, "lostClients");
 
   if (!hasAccess) {

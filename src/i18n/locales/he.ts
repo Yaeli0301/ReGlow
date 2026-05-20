@@ -294,8 +294,7 @@ export const he = {
     checkoutFailed: "לא הצלחנו לפתוח את דף התשלום. נסי שוב.",
     redirecting: "מעבירה לתשלום...",
     demoBlockedTitle: "מצב דמו — ניהול מנוי חסום",
-    demoBlockedDesc:
-      "בדמו אין תשלום אמיתי. לחצי על חבילה למטה כדי לנסות Basic / Pro / Premium באותו אתר — בלי מעבר לאתר ישן.",
+    demoBlockedDesc: "זה חשבון הדגמה מהדף נחיתה — אין תשלום כאן. להרשמה אמיתית חזרי לדף הבית.",
     demoTryPlan: "נסי בדמו",
     demoSwitchFailed: "לא הצלחנו להחליף חבילה בדמו. נסי שוב.",
     demoSignupCta: "הרשמה לחשבון אמיתי (פרודקשן)",

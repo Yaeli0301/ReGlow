@@ -5,7 +5,7 @@ import Link from "next/link";
 import { OptInBadge } from "@/components/clients/OptInBadge";
 import { MessageChannelButton } from "@/components/clients/MessageChannelButton";
 import { WHATSAPP_TEMPLATES } from "@/lib/whatsapp";
-import { useAppUser, useDemoMode } from "@/contexts/AppUserContext";
+import { useAppUser } from "@/contexts/AppUserContext";
 import { canAccess } from "@/lib/subscription";
 import { useT } from "@/contexts/LanguageContext";
 import type { ClientStatus } from "@/types";
@@ -23,7 +23,6 @@ interface Client {
 export default function LostClientsPage() {
   const t = useT();
   const user = useAppUser();
-  const demoMode = useDemoMode();
   const hasAccess = canAccess(user.subscriptionTier, "lostClients");
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);

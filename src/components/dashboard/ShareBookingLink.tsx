@@ -5,7 +5,6 @@ import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { HelpTooltip } from "@/components/ui/HelpTooltip";
 import { useT, useLanguage } from "@/contexts/LanguageContext";
-import { useDemoMode } from "@/contexts/AppUserContext";
 import { useToast } from "@/contexts/ToastContext";
 import {
   buildWhatsAppLinkOnlyUrl,
@@ -21,7 +20,6 @@ interface ShareBookingLinkProps {
 export function ShareBookingLink({ businessId, locked = false }: ShareBookingLinkProps) {
   const t = useT();
   const { locale } = useLanguage();
-  const demoMode = useDemoMode();
   const { showToast } = useToast();
   const [copied, setCopied] = useState(false);
 

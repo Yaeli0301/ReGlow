@@ -11,9 +11,14 @@ export function isDemoMode(): boolean {
   return getEnvMode() === "demo";
 }
 
-/** Allows /demo/start from an external landing page link (or full demo deployment). */
+/** Allows /api/demo/start (production landing demo DB or full demo deployment). */
 export function canStartLandingDemo(): boolean {
   return isDemoMode() || process.env.ENABLE_LANDING_DEMO === "true";
+}
+
+/** "Try demo" button — public landing page only, not inside the logged-in app. */
+export function shouldShowLandingDemoCta(): boolean {
+  return !isDemoMode() && process.env.ENABLE_LANDING_DEMO === "true";
 }
 
 /** Vercel Atlas integration — prefer auto-injected URI over manual MONGODB_URI_DEMO. */
