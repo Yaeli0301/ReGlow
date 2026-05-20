@@ -1,5 +1,5 @@
-import { PageLoading } from "@/components/ui/PageLoading";
+import { DashboardSkeleton } from "@/components/dashboard/DashboardSkeleton";
 
 export default function DashboardLoading() {
-  return <PageLoading label="טוען דאשבורד" />;
+  return <DashboardSkeleton />;
 }
