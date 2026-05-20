@@ -16,10 +16,20 @@ export async function assertSystemReady(pathname: string): Promise<NextResponse 
 }
 
 export function systemNotReadyResponse(snapshot: SystemStateSnapshot): NextResponse {
+  const reason = snapshot.reason || snapshot.reasons[0] || "המערכת לא מוכנה";
+  const userMessage =
+    reason.includes("JWT_SECRET")
+      ? "הגדרות שרת חסרות (JWT_SECRET ב-Vercel — לפחות 32 תווים)."
+      : reason.includes("MONGODB_URI")
+        ? "מסד הנתונים לא מוגדר. בדקי MONGODB_URI ב-Vercel."
+        : reason.includes("Database") || reason.includes("Mongo")
+          ? "לא ניתן להתחבר ל-MongoDB. ב-Atlas: Network Access → 0.0.0.0/0."
+          : `המערכת לא זמינה: ${reason}`;
+
   return NextResponse.json(
     {
       success: false,
-      error: "SYSTEM_NOT_READY",
+      error: userMessage,
       code: "SYSTEM_NOT_READY",
       reason: snapshot.reason,
       reasons: snapshot.reasons,

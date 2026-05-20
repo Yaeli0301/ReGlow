@@ -16,6 +16,10 @@ const EXEMPT_PREFIXES = [
   "/api/demo/start",
   "/api/demo/status",
   "/api/demo/reset",
+  "/api/auth/login",
+  "/api/auth/register",
+  "/api/auth/demo-login",
+  "/api/auth/logout",
 ];
 
 export function isExemptFromSystemGuard(pathname: string): boolean {

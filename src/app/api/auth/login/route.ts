@@ -60,13 +60,16 @@ export async function POST(request: Request) {
     try {
       await connectDB();
     } catch (dbError) {
-      logger.error("Login DB connection failed", {
-        err: dbError instanceof Error ? dbError.message : String(dbError),
-      });
+      const detail = dbError instanceof Error ? dbError.message : String(dbError);
+      logger.error("Login DB connection failed", { err: detail });
+      const hint = /MONGODB_URI_DEMO|bad auth|authentication failed|ENOTFOUND|timed out/i.test(
+        detail
+      )
+        ? detail
+        : "לא ניתן להתחבר למסד הנתונים. ב-Atlas: Network Access → Allow 0.0.0.0/0, וב-Vercel ודאי MONGODB_URI (או MONGODB_URI_DEMO בדמו).";
       return NextResponse.json(
         {
-          error:
-            "לא ניתן להתחבר למסד הנתונים. ודאי ש-MongoDB פועל (או הגדירי ENV_MODE=demo לעבודה בלי Mongo).",
+          error: hint,
           code: "DATABASE_UNAVAILABLE",
         },
         { status: 503 }
@@ -78,6 +81,14 @@ export async function POST(request: Request) {
     if (!user) {
       trackLoginFailure(emailLower);
       logger.info("Login attempt: user not found", { email: maskEmail(emailLower) });
+      return NextResponse.json(
+        { success: false, error: "אימייל או סיסמה שגויים", code: "INVALID_CREDENTIALS" },
+        { status: 401 }
+      );
+    }
+
+    if (!user.password) {
+      trackLoginFailure(emailLower);
       return NextResponse.json(
         { success: false, error: "אימייל או סיסמה שגויים", code: "INVALID_CREDENTIALS" },
         { status: 401 }

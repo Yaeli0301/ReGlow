@@ -47,6 +47,19 @@ export default function LoginPage() {
     window.location.assign(dest);
   }
 
+  function formatLoginError(data: {
+    error?: string;
+    code?: string;
+    reason?: string;
+    reasons?: string[];
+  }): string {
+    if (data.error && data.error !== "SYSTEM_NOT_READY") return data.error;
+    if (data.code === "SYSTEM_NOT_READY") {
+      return data.reason || data.reasons?.[0] || t("auth.systemNotReady");
+    }
+    return t("auth.loginFailed");
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
@@ -62,6 +75,9 @@ export default function LoginPage() {
 
       let data: {
         error?: string;
+        code?: string;
+        reason?: string;
+        reasons?: string[];
         user?: {
           id: string;
           email: string;
@@ -85,7 +101,7 @@ export default function LoginPage() {
       }
 
       if (!res.ok) {
-        setError(data.error || t("auth.loginFailed"));
+        setError(formatLoginError(data));
         return;
       }
 
@@ -109,7 +125,7 @@ export default function LoginPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || t("auth.loginFailed"));
+        setError(formatLoginError(data));
         return;
       }
       await completeLogin(data);

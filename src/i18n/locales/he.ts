@@ -71,6 +71,8 @@ export const he = {
     referredBanner: "הוזמנת על ידי חברה — נרשמי ותקבלי גישה מלאה ל-ReGlow 💖",
     hasAccount: "כבר יש חשבון?",
     loginFailed: "ההתחברות נכשלה",
+    systemNotReady:
+      "המערכת לא מוכנה — בדקי MongoDB ו-JWT_SECRET ב-Vercel (ראי docs/VERCEL-SETUP.md).",
     registerFailed: "ההרשמה נכשלה",
     welcomeAdmin: "ברוכה הבאה, מנהלת מערכת",
     welcomeBusiness: "ברוכה הבאה, בעלת עסק",

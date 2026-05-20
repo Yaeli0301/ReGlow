@@ -73,6 +73,8 @@ export const en = {
     referredBanner: "You were invited by a friend — register for full ReGlow access 💖",
     hasAccount: "Already have an account?",
     loginFailed: "Login failed",
+    systemNotReady:
+      "System not ready — check MongoDB and JWT_SECRET on Vercel (see docs/VERCEL-SETUP.md).",
     registerFailed: "Registration failed",
     welcomeAdmin: "Welcome, Admin",
     welcomeBusiness: "Welcome, Business User",
