@@ -1,4 +1,4 @@
-import { DEMO_OWNER_EMAIL } from "@/lib/seed/demo-seed";
+import { DEMO_OWNER_EMAIL } from "@/lib/seed/demo-constants";
 
 export type EnvMode = "demo" | "production";
 

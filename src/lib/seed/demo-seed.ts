@@ -11,10 +11,19 @@ import { upsertClientByPhone } from "@/lib/client-service";
 import { buildRescheduleToken } from "@/lib/notifications";
 import { logger } from "@/lib/logger";
 
-export const DEMO_OWNER_EMAIL = "demo@reglow.local";
-export const DEMO_OWNER_PASSWORD = "Demo1234!";
-export const DEMO_ADMIN_EMAIL = "admin@reglow.local";
-export const DEMO_ADMIN_PASSWORD = "Demo1234!";
+import {
+  DEMO_ADMIN_EMAIL,
+  DEMO_ADMIN_PASSWORD,
+  DEMO_OWNER_EMAIL,
+  DEMO_OWNER_PASSWORD,
+} from "@/lib/seed/demo-constants";
+
+export {
+  DEMO_OWNER_EMAIL,
+  DEMO_OWNER_PASSWORD,
+  DEMO_ADMIN_EMAIL,
+  DEMO_ADMIN_PASSWORD,
+} from "@/lib/seed/demo-constants";
 
 const DEMO_CLIENTS = [
   { name: "מיה כהן", phone: "0501111001" },

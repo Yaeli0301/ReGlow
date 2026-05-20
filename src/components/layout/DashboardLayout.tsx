@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { isDemoMode } from "@/lib/env";
 import { isLandingDemoVisitor } from "@/lib/landing-demo-session";
-import { DEMO_OWNER_EMAIL } from "@/lib/seed/demo-seed";
+import { DEMO_OWNER_EMAIL } from "@/lib/seed/demo-constants";
 import { AppShell } from "./AppShell";
 
 export async function DashboardLayout({ children }: { children: React.ReactNode }) {
