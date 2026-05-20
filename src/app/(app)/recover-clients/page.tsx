@@ -18,7 +18,7 @@ export default function RecoverClientsPage() {
         <h1 className="text-xl font-bold">{t("lostClients.lockedTitle", { count: "—" })}</h1>
         <p className="mt-2 text-gray-600">{t("lostClients.lockedDesc")}</p>
         <Link
-          href={demoMode ? "/demo/start?plan=pro" : "/billing"}
+          href="/billing"
           className="btn-primary mt-4 inline-block"
         >
           {t("lostClients.upgradeCta")}

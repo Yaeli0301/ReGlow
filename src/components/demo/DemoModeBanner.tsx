@@ -1,9 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { clearAuthClient } from "@/lib/client-auth";
+import { getProductionSignupUrl } from "@/lib/app-url";
+import { switchDemoPlan, type DemoPlan } from "@/lib/demo/switch-demo-plan-client";
 import { resetDemoUpsellSegment } from "@/lib/demo/demo-upsell-timer";
 import type { SubscriptionTier } from "@/types";
 
@@ -29,6 +30,8 @@ export function DemoModeBanner({
 }: DemoModeBannerProps) {
   const [resetting, setResetting] = useState(false);
   const [signingUp, setSigningUp] = useState(false);
+  const [switchingPlan, setSwitchingPlan] = useState<DemoPlan | null>(null);
+  const [planError, setPlanError] = useState("");
 
   async function resetDemo() {
     setResetting(true);
@@ -46,7 +49,7 @@ export function DemoModeBanner({
     try {
       await fetch("/api/auth/logout", { method: "POST" });
       clearAuthClient();
-      window.location.href = "/register";
+      window.location.href = getProductionSignupUrl();
     } finally {
       setSigningUp(false);
     }
@@ -118,23 +121,37 @@ export function DemoModeBanner({
         <span className="text-xs font-semibold text-amber-800">נסי חבילה אחרת:</span>
         {DEMO_PLANS.map((plan) => {
           const active = subscriptionTier === plan.id;
+          const busy = switchingPlan === plan.id;
           return (
-            <Link
+            <button
               key={plan.id}
-              href={`/demo/start?plan=${plan.id}`}
-              className={`min-h-[44px] rounded-lg px-3 py-2 text-xs font-semibold transition ${
+              type="button"
+              disabled={active || busy || Boolean(switchingPlan)}
+              onClick={async () => {
+                setPlanError("");
+                setSwitchingPlan(plan.id);
+                const result = await switchDemoPlan(plan.id);
+                setSwitchingPlan(null);
+                if (!result.ok) {
+                  setPlanError(result.error || "לא הצלחנו להחליף חבילה");
+                  return;
+                }
+                window.location.reload();
+              }}
+              className={`min-h-[44px] rounded-lg px-3 py-2 text-xs font-semibold transition disabled:opacity-60 ${
                 active
                   ? "bg-amber-600 text-white shadow-sm"
                   : "bg-white text-amber-900 ring-1 ring-amber-300 hover:bg-amber-100"
               }`}
               aria-current={active ? "true" : undefined}
             >
-              {plan.label}
+              {busy ? "..." : plan.label}
               {active ? " ✓" : ""}
-            </Link>
+            </button>
           );
         })}
       </div>
+      {planError && <p className="mt-2 text-xs text-red-700">{planError}</p>}
     </div>
   );
 }

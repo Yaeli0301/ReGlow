@@ -87,7 +87,7 @@ export default function BrandingPage() {
             <p className="mt-2 text-amber-700">
               דף הזמנות אונליין זמין ב-Premium בלבד.{" "}
               <a
-                href={demoMode ? "/demo/start?plan=premium" : "/billing"}
+                href="/billing"
                 className="font-semibold underline"
               >
                 {demoMode ? "נסי Premium בדמו" : "שדרוג ל-Premium"}

@@ -49,6 +49,7 @@ export async function createCheckoutSession(params: {
   useReferralReward?: boolean;
   /** Admin-granted % discount applied once at checkout. */
   adminDiscountPercent?: number;
+  appOrigin: string;
 }): Promise<Stripe.Checkout.Session> {
   const stripe = getStripe();
   const priceId = PRICE_IDS[params.tier];
@@ -63,8 +64,8 @@ export async function createCheckoutSession(params: {
     customer_email: params.customerId ? undefined : params.customerEmail,
     line_items: [{ price: priceId, quantity: 1 }],
     ...(couponId ? { discounts: [{ coupon: couponId }] } : {}),
-    success_url: `${process.env.NEXT_PUBLIC_APP_URL}/billing?success=true&referral_reward=${params.useReferralReward ? "1" : "0"}`,
-    cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/billing?canceled=true`,
+    success_url: `${params.appOrigin}/billing?success=true&referral_reward=${params.useReferralReward ? "1" : "0"}`,
+    cancel_url: `${params.appOrigin}/billing?canceled=true`,
     metadata: {
       userId: params.userId,
       tier: params.tier,
@@ -85,11 +86,12 @@ export async function createCheckoutSession(params: {
 }
 
 export async function createBillingPortalSession(
-  customerId: string
+  customerId: string,
+  appOrigin: string
 ): Promise<Stripe.BillingPortal.Session> {
   const stripe = getStripe();
   return stripe.billingPortal.sessions.create({
     customer: customerId,
-    return_url: `${process.env.NEXT_PUBLIC_APP_URL}/billing`,
+    return_url: `${appOrigin}/billing`,
   });
 }

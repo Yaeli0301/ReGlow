@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { connectDB } from "@/lib/mongodb";
 import { requireAuthFromRequest } from "@/lib/api-auth";
+import { resolveAppOrigin } from "@/lib/app-url";
+import { shouldBlockPaidCheckout } from "@/lib/env";
 import { createCheckoutSession, getStripe } from "@/lib/stripe";
 import { getStripeConfigError, isStripeConfigured, validateTierPrice } from "@/lib/stripe-config";
 import { User } from "@/models/User";
@@ -18,6 +20,16 @@ export async function POST(request: Request) {
   if (auth instanceof NextResponse) return auth;
 
   try {
+    if (shouldBlockPaidCheckout(auth.user.email)) {
+      return NextResponse.json(
+        {
+          error: "בדמו אין תשלום אמיתי — החליפי חבילה מהבאנר או מדף המנוי",
+          code: "DEMO_CHECKOUT_BLOCKED",
+        },
+        { status: 403 }
+      );
+    }
+
     if (!isStripeConfigured()) {
       return NextResponse.json(
         { error: getStripeConfigError("he"), code: "STRIPE_NOT_CONFIGURED" },
@@ -73,6 +85,7 @@ export async function POST(request: Request) {
       tier,
       useReferralReward,
       adminDiscountPercent,
+      appOrigin: resolveAppOrigin(request),
     });
 
     // Consume the discount so it isn't reused on another checkout

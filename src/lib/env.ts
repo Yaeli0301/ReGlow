@@ -1,3 +1,5 @@
+import { DEMO_OWNER_EMAIL } from "@/lib/seed/demo-seed";
+
 export type EnvMode = "demo" | "production";
 
 export function getEnvMode(): EnvMode {
@@ -226,6 +228,13 @@ export function getMongoUriOrThrow(): string {
     throw new Error("Production mode: MONGODB_URI is required");
   }
   return ensureAtlasConnectionUri(uri);
+}
+
+/** Block Stripe checkout on demo deploy or landing-demo visitor. */
+export function shouldBlockPaidCheckout(userEmail?: string | null): boolean {
+  if (isDemoMode()) return true;
+  if (shouldUseLandingDemoDatabase() && userEmail === DEMO_OWNER_EMAIL) return true;
+  return false;
 }
 
 export function isRealPaymentsEnabled(): boolean {

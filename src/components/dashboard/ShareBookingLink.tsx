@@ -50,7 +50,7 @@ export function ShareBookingLink({ businessId, locked = false }: ShareBookingLin
         <p className="font-medium text-gray-800">{t("dashboard.bookingLockedTitle")}</p>
         <p className="mt-1 text-sm text-gray-600">{t("dashboard.bookingLockedDesc")}</p>
         <Link
-          href={demoMode ? "/demo/start?plan=premium" : "/billing"}
+          href="/billing"
           className="btn-primary mt-4 inline-block min-h-[44px]"
         >
           {t("dashboard.bookingUpgradeCta")}

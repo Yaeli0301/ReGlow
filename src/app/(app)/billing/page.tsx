@@ -9,6 +9,8 @@ import { ReferralPanel } from "@/components/referral/ReferralPanel";
 import { useLanguage, useT } from "@/contexts/LanguageContext";
 import { useDemoMode } from "@/contexts/AppUserContext";
 import { getTranslatedPlans, tierLabel } from "@/i18n/plans";
+import { switchDemoPlan, type DemoPlan } from "@/lib/demo/switch-demo-plan-client";
+import { getProductionSignupUrl } from "@/lib/app-url";
 
 export default function BillingPage() {
   const searchParams = useSearchParams();
@@ -79,6 +81,23 @@ export default function BillingPage() {
     }
   }
 
+  async function handleDemoPlan(tier: DemoPlan) {
+    setCheckoutError(null);
+    setLoading(tier);
+    try {
+      const result = await switchDemoPlan(tier);
+      if (!result.ok) {
+        setCheckoutError(result.error || t("billing.demoSwitchFailed"));
+        return;
+      }
+      window.location.href = "/dashboard";
+    } catch {
+      setCheckoutError(t("billing.demoSwitchFailed"));
+    } finally {
+      setLoading(null);
+    }
+  }
+
   async function handlePortal() {
     setLoading("portal");
     const res = await fetch("/api/stripe/portal", { method: "POST" });
@@ -114,6 +133,12 @@ export default function BillingPage() {
         <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
           <p className="font-semibold">{t("billing.demoBlockedTitle")}</p>
           <p className="mt-1">{t("billing.demoBlockedDesc")}</p>
+          <a
+            href={getProductionSignupUrl()}
+            className="mt-3 inline-flex min-h-[44px] items-center rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
+          >
+            {t("billing.demoSignupCta")} →
+          </a>
         </div>
       )}
 
@@ -177,10 +202,18 @@ export default function BillingPage() {
                 className="mt-6 w-full"
                 variant={isPopular ? "primary" : "secondary"}
                 loading={loading === plan.id}
-                disabled={isCurrent || demoMode}
-                onClick={() => !demoMode && handleCheckout(plan.id)}
+                disabled={isCurrent}
+                onClick={() =>
+                  demoMode
+                    ? handleDemoPlan(plan.id as DemoPlan)
+                    : handleCheckout(plan.id)
+                }
               >
-                {isCurrent ? t("billing.currentPlanBtn") : `${t("billing.choosePlan")} ${plan.name}`}
+                {isCurrent
+                  ? t("billing.currentPlanBtn")
+                  : demoMode
+                    ? `${t("billing.demoTryPlan")} ${plan.name}`
+                    : `${t("billing.choosePlan")} ${plan.name}`}
               </Button>
             </div>
           );

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { clearAuthClient } from "@/lib/client-auth";
+import { getProductionSignupUrl } from "@/lib/app-url";
 import {
   DEMO_SEGMENT_MS,
   extendDemoByMinutes,
@@ -46,7 +47,7 @@ export function DemoUpsellModal({ active = false }: DemoUpsellModalProps) {
     try {
       await fetch("/api/auth/logout", { method: "POST" });
       clearAuthClient();
-      window.location.href = "/register";
+      window.location.href = getProductionSignupUrl();
     } finally {
       setSigningUp(false);
     }
@@ -96,13 +97,13 @@ export function DemoUpsellModal({ active = false }: DemoUpsellModalProps) {
           {signingUp ? "מעבירה להרשמה..." : "כן! פתיחת חשבון אמיתי →"}
         </Button>
 
-        <Link
-          href="/register"
+        <a
+          href={getProductionSignupUrl()}
           className="mt-3 block text-center text-sm font-semibold text-brand-600 underline-offset-2 hover:underline"
           onClick={() => setOpen(false)}
         >
           לראות מחירים והרשמה
-        </Link>
+        </a>
 
         <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50/80 p-4">
           <p className="text-sm font-semibold text-amber-950">עוד לא מוכנה?</p>

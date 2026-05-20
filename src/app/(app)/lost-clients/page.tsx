@@ -69,7 +69,7 @@ export default function LostClientsPage() {
         <h1 className="text-xl font-bold text-brand-800">{lockedTitle}</h1>
         <p className="mt-2 text-gray-600">{t("lostClients.lockedDesc")}</p>
         <Link
-          href={demoMode ? "/demo/start?plan=pro" : "/billing"}
+          href="/billing"
           className="btn-primary mt-4 inline-block"
         >
           {t("lostClients.upgradeCta")}

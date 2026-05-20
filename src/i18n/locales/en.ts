@@ -292,7 +292,11 @@ export const en = {
     checkoutFailed: "Could not open checkout. Please try again.",
     redirecting: "Redirecting to checkout...",
     demoBlockedTitle: "Demo mode — subscription management disabled",
-    demoBlockedDesc: "This is a demo. For real signup and billing, create an account on production.",
+    demoBlockedDesc:
+      "No real payments in demo. Tap a plan below to try Basic / Pro / Premium on this site — no redirect to an old URL.",
+    demoTryPlan: "Try in demo",
+    demoSwitchFailed: "Could not switch demo plan. Please try again.",
+    demoSignupCta: "Sign up for a real account (production)",
     title: "Billing & subscription",
     currentPlan: "Current plan",
     noPlan: "No active plan",
