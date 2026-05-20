@@ -43,6 +43,8 @@ export const en = {
     upgradeShort: "Upgrade",
   },
   landing: {
+    badge: "Salon & beauty business OS",
+    tryDemo: "Try demo — no signup",
     signIn: "Sign in",
     startFree: "Start free",
     title: "Bring your clients back",

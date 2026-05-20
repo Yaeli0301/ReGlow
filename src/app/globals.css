@@ -1,13 +1,10 @@
 @tailwind base;
-
-body {
-  font-family: var(--font-heebo), system-ui, sans-serif;
-}
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   body {
+    font-family: var(--font-heebo), system-ui, sans-serif;
     @apply overflow-x-hidden bg-gradient-to-br from-brand-50 via-white to-accent-400/5 text-base text-gray-900 antialiased md:text-sm;
   }
 }

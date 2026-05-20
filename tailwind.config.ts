@@ -8,6 +8,9 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ["var(--font-heebo)", "system-ui", "sans-serif"],
+      },
       colors: {
         brand: {
           50: "#fdf2f8",

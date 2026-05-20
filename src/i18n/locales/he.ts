@@ -41,6 +41,8 @@ export const he = {
     upgradeShort: "שדרוג",
   },
   landing: {
+    badge: "מערכת לסלונים וקוסמטיקאיות",
+    tryDemo: "נסי דמו בלי הרשמה",
     signIn: "התחברות",
     startFree: "התחילי בחינם",
     title: "בואי נחזיר את הלקוחות שלך",
