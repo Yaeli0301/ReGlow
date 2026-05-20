@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { OptInBadge } from "@/components/clients/OptInBadge";
-import { WhatsAppButton } from "@/components/clients/WhatsAppButton";
+import { MessageChannelButton } from "@/components/clients/MessageChannelButton";
 import { WHATSAPP_TEMPLATES } from "@/lib/whatsapp";
 import { useAppUser, useDemoMode } from "@/contexts/AppUserContext";
 import { canAccess } from "@/lib/subscription";
@@ -28,11 +28,20 @@ export default function LostClientsPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [locked, setLocked] = useState(false);
+  const [lockedPreviewCount, setLockedPreviewCount] = useState(0);
 
   useEffect(() => {
     if (!hasAccess) {
-      setLoading(false);
-      setLocked(true);
+      fetch("/api/dashboard/stats")
+        .then(async (res) => (res.ok ? res.json() : null))
+        .then((data: { lostClients?: number } | null) => {
+          if (data?.lostClients != null) setLockedPreviewCount(data.lostClients);
+        })
+        .catch(() => {})
+        .finally(() => {
+          setLoading(false);
+          setLocked(true);
+        });
       return;
     }
 
@@ -51,9 +60,13 @@ export default function LostClientsPage() {
   if (loading) return <p className="text-gray-500">{t("common.loading")}</p>;
 
   if (locked) {
+    const lockedTitle = t("lostClients.lockedTitle").replace(
+      "{count}",
+      String(lockedPreviewCount || "—")
+    );
     return (
       <div className="card max-w-lg text-center">
-        <h1 className="text-xl font-bold">{t("lostClients.lockedTitle")}</h1>
+        <h1 className="text-xl font-bold text-brand-800">{lockedTitle}</h1>
         <p className="mt-2 text-gray-600">{t("lostClients.lockedDesc")}</p>
         <Link
           href={demoMode ? "/demo/start?plan=pro" : "/billing"}
@@ -66,9 +79,15 @@ export default function LostClientsPage() {
   }
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold text-red-600">{t("lostClients.title")}</h1>
+    <div className="pb-8">
+      <h1 className="text-2xl font-bold text-brand-800">{t("lostClients.title")}</h1>
       <p className="mt-1 text-gray-500">{t("lostClients.subtitle")}</p>
+
+      {clients.length > 0 && (
+        <Link href="/recover-clients" className="btn-primary mt-6 inline-flex min-h-[48px]">
+          {t("dashboard.heroCta")}
+        </Link>
+      )}
 
       {clients.length === 0 ? (
         <div className="card mt-8 text-center text-gray-500">
@@ -94,12 +113,13 @@ export default function LostClientsPage() {
                   </p>
                 )}
               </div>
-              <WhatsAppButton
+              <MessageChannelButton
                 phone={client.phone}
-                message={WHATSAPP_TEMPLATES.winBack}
+                message={WHATSAPP_TEMPLATES.reactivation}
                 optIn={client.optIn}
                 lastMessageSentDate={client.lastMessageSentDate}
                 label={t("lostClients.sendReactivation")}
+                smsLabel="SMS"
               />
             </div>
           ))}
