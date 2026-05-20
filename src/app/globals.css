@@ -14,15 +14,15 @@ body {
 
 @layer components {
   .btn-primary {
-    @apply inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-brand-500 to-accent-500 px-5 py-2.5 text-base font-semibold text-white shadow-soft transition hover:opacity-90 disabled:opacity-50 md:w-auto md:text-sm;
+    @apply inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-brand-500 to-accent-500 px-5 py-2.5 text-base font-semibold text-white shadow-soft transition hover:from-brand-600 hover:to-accent-600 hover:shadow-md active:scale-[0.98] disabled:opacity-50 md:w-auto md:text-sm;
   }
 
   .btn-secondary {
-    @apply inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-2xl border border-brand-200 bg-white px-5 py-2.5 text-base font-semibold text-brand-700 shadow-card transition hover:bg-brand-50 disabled:opacity-50 md:w-auto md:text-sm;
+    @apply inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-2xl border-2 border-brand-200 bg-white px-5 py-2.5 text-base font-semibold text-brand-700 shadow-card transition hover:border-brand-400 hover:bg-brand-50 hover:text-brand-800 active:scale-[0.98] disabled:opacity-50 md:w-auto md:text-sm;
   }
 
   .card {
-    @apply rounded-2xl border border-white/80 bg-white/90 p-6 shadow-card backdrop-blur-sm;
+    @apply rounded-2xl border border-white/80 bg-white/90 p-6 shadow-card backdrop-blur-sm transition hover:border-brand-100 hover:shadow-md;
   }
 
   .input {

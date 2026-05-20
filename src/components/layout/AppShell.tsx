@@ -14,6 +14,7 @@ import dynamic from "next/dynamic";
 import { DemoModeBanner } from "@/components/demo/DemoModeBanner";
 import { DemoUpsellModal } from "@/components/demo/DemoUpsellModal";
 import { MaintenanceBanner } from "@/components/system/MaintenanceBanner";
+import { MobileBottomNav } from "./MobileBottomNav";
 
 const PendingCashPaymentsSlot = dynamic(
   () =>
@@ -265,38 +266,9 @@ function AppShellInner({
               <LanguageSwitcher />
             </div>
           </div>
-          <nav className="flex gap-1 overflow-x-auto px-3 pb-3 scrollbar-hide">
-            {navItems.map((item) => {
-              const active = pathname === item.href;
-              const Icon = item.Icon;
-              const locked = isNavLocked(item.feature);
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  prefetch
-                  className={`relative flex min-h-[44px] shrink-0 flex-col items-center justify-center gap-1 rounded-2xl px-3 py-2 text-[10px] font-semibold transition ${
-                    active
-                      ? "bg-gradient-to-br from-brand-500 to-accent-500 text-white shadow-soft"
-                      : locked
-                        ? "bg-gray-100 text-gray-400"
-                        : "bg-brand-50 text-brand-600"
-                  }`}
-                >
-                  <Icon className="h-5 w-5" />
-                  <span className="max-w-[4.5rem] truncate">{item.label}</span>
-                  {locked && (
-                    <span className="absolute -top-0.5 start-1 text-[8px]" aria-hidden>
-                      🔒
-                    </span>
-                  )}
-                </Link>
-              );
-            })}
-          </nav>
         </header>
 
-        <div className="flex-1 px-4 py-4 md:px-10 md:py-8 lg:p-8">
+        <div className="flex-1 px-4 py-4 pb-24 md:px-10 md:py-8 md:pb-8 lg:p-8">
           <MaintenanceBanner />
           <DemoModeBanner
             demo={demoMode}
@@ -309,6 +281,7 @@ function AppShellInner({
           <DemoUpsellModal active={demoMode} />
           {children}
         </div>
+        {!isAdmin && <MobileBottomNav user={user} />}
       </main>
     </div>
   );
