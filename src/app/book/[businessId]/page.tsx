@@ -53,7 +53,11 @@ export default function BookingPage() {
   const [loading, setLoading] = useState(true);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState<{ whatsappUrl?: string } | false>(false);
+  const [success, setSuccess] = useState<{
+    whatsappUrl?: string;
+    paymentUrl?: string;
+    finalPrice?: number;
+  } | false>(false);
 
   const [form, setForm] = useState({
     name: "",
@@ -153,7 +157,11 @@ export default function BookingPage() {
 
     const appointmentDate = new Date(data.appointmentDate);
     const msg = buildConfirmationMessage(businessName, appointmentDate, data.serviceName);
-    setSuccess({ whatsappUrl: buildWhatsAppLink(form.phone, msg) });
+    setSuccess({
+      whatsappUrl: buildWhatsAppLink(form.phone, msg),
+      paymentUrl: data.paymentUrl,
+      finalPrice: data.finalPrice,
+    });
   }
 
   const shellClass = `min-h-screen ${dir === "rtl" ? "" : ""}`;
@@ -188,12 +196,20 @@ export default function BookingPage() {
         <div className="card max-w-md text-center">
           <h1 className="text-2xl font-bold text-brand-600">{t("booking.confirmedTitle")}</h1>
           <p className="mt-2 text-gray-600">{t("booking.seeYouAt", { name: businessName })}</p>
+          {success.paymentUrl && (success.finalPrice ?? 0) > 0 && (
+            <a
+              href={success.paymentUrl}
+              className="btn-primary mt-6 inline-flex min-h-[48px] w-full items-center justify-center text-base font-semibold"
+            >
+              {t("booking.payNow")}
+            </a>
+          )}
           {success.whatsappUrl && (
             <a
               href={success.whatsappUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="btn-primary mt-6 inline-block"
+              className="mt-3 inline-block text-sm text-brand-600 hover:underline"
             >
               {t("booking.openWhatsApp")}
             </a>

@@ -49,3 +49,13 @@ export async function buildCancellationWhatsApp(params: {
 export function buildRescheduleToken(): string {
   return `rs_${crypto.randomUUID().replace(/-/g, "")}`;
 }
+
+export function buildPaymentToken(): string {
+  return `pay_${crypto.randomUUID().replace(/-/g, "")}`;
+}
+
+export function buildPublicPaymentUrl(paymentToken: string, origin?: string): string {
+  const base = origin || process.env.NEXT_PUBLIC_APP_URL || "";
+  const path = `/pay/${paymentToken}`;
+  return base ? `${base.replace(/\/$/, "")}${path}` : path;
+}

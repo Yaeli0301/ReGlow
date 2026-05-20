@@ -1,7 +1,7 @@
 import { Appointment } from "@/models/Appointment";
 import { resolveServiceDuration } from "@/lib/service-duration";
 import { assertSlotAvailable } from "@/lib/scheduling";
-import { buildRescheduleToken } from "@/lib/notifications";
+import { buildPaymentToken, buildRescheduleToken } from "@/lib/notifications";
 import type { SelectedAddOn, PriceLineItem } from "@/types/payments";
 
 export async function createValidatedAppointment(params: {
@@ -31,6 +31,7 @@ export async function createValidatedAppointment(params: {
     finalPrice: params.finalPrice ?? 0,
     durationMinutes,
     rescheduleToken: buildRescheduleToken(),
+    paymentToken: buildPaymentToken(),
     notes: params.notes || "",
     paymentStatus: "unpaid",
   });

@@ -22,7 +22,7 @@ const PaymentSchema = new Schema<IPayment>(
     clientId: { type: Schema.Types.ObjectId, ref: "Client", required: true },
     method: {
       type: String,
-      enum: ["cash", "card", "bit", "paypal"],
+      enum: ["cash", "card", "bit", "paypal", "other"],
       required: true,
     },
     amount: { type: Number, required: true, min: 0 },

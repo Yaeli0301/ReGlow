@@ -105,4 +105,5 @@ export const PAYMENT_METHOD_LABELS: Record<string, string> = {
   card: "אשראי",
   bit: "ביט",
   paypal: "PayPal",
+  other: "אחר",
 };

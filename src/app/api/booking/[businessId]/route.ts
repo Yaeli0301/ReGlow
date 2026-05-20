@@ -11,6 +11,7 @@ import { SchedulingConflictError } from "@/lib/scheduling";
 import { getOrCreateBusinessSettings, serializeBusinessSettings } from "@/lib/business-settings";
 import { buildPriceBreakdown, serializeService } from "@/lib/pricing";
 import { trackEvent } from "@/lib/analytics/event-tracker";
+import { buildPublicPaymentUrl } from "@/lib/notifications";
 
 const bookSchema = z.object({
   name: z.string().min(1),
@@ -134,6 +135,11 @@ export async function POST(
       },
     });
 
+    const origin = new URL(request.url).origin;
+    const paymentUrl = appointment.paymentToken
+      ? buildPublicPaymentUrl(appointment.paymentToken, origin)
+      : undefined;
+
     return NextResponse.json(
       {
         success: true,
@@ -144,6 +150,7 @@ export async function POST(
         serviceName: pricing.serviceName,
         lineItems: pricing.lineItems,
         finalPrice: pricing.finalPrice,
+        paymentUrl,
       },
       { status: 201 }
     );

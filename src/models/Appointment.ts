@@ -15,6 +15,7 @@ export interface IAppointment extends Document {
   serviceName?: string;
   durationMinutes: number;
   rescheduleToken?: string;
+  paymentToken?: string;
   cancelReason?: string;
   canceledAt?: Date;
   selectedAddOns: SelectedAddOn[];
@@ -58,6 +59,7 @@ const AppointmentSchema = new Schema<IAppointment>(
     serviceName: { type: String },
     durationMinutes: { type: Number, default: 60 },
     rescheduleToken: { type: String, unique: true, sparse: true },
+    paymentToken: { type: String, unique: true, sparse: true },
     cancelReason: { type: String },
     canceledAt: { type: Date },
     selectedAddOns: { type: [SelectedAddOnSchema], default: [] },

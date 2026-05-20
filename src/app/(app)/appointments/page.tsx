@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import {
   format,
   startOfWeek,
@@ -21,7 +22,7 @@ import { SubscriptionGate } from "@/components/billing/SubscriptionGate";
 import { useAppUser } from "@/contexts/AppUserContext";
 import { useT } from "@/contexts/LanguageContext";
 import { canAccess } from "@/lib/subscription";
-import { PaymentCheckoutModal } from "@/components/payments/PaymentCheckoutModal";
+import { SendPaymentLinkModal } from "@/components/payments/SendPaymentLinkModal";
 
 interface Client {
   _id: string;
@@ -40,6 +41,8 @@ interface Appointment {
   date: string;
   status: "scheduled" | "completed" | "canceled";
   serviceName?: string;
+  paymentStatus?: "unpaid" | "pending_cash" | "paid";
+  finalPrice?: number;
 }
 
 function clientName(appt: Appointment): string {
@@ -50,6 +53,7 @@ export default function AppointmentsPage() {
   const t = useT();
   const user = useAppUser();
   const hasPro = canAccess(user.subscriptionTier, "appointments");
+  const hasLostAccess = canAccess(user.subscriptionTier, "lostClients");
 
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
@@ -59,10 +63,12 @@ export default function AppointmentsPage() {
   const [weekStart, setWeekStart] = useState(startOfWeek(new Date(), { weekStartsOn: 0 }));
   const [monthDate, setMonthDate] = useState(startOfMonth(new Date()));
   const [showForm, setShowForm] = useState(false);
-  const [checkoutAppt, setCheckoutAppt] = useState<{
+  const [paymentLinkAppt, setPaymentLinkAppt] = useState<{
     id: string;
     clientName: string;
+    clientPhone: string;
     serviceName?: string;
+    amount: number;
   } | null>(null);
   const [clientMode, setClientMode] = useState<"existing" | "new">("new");
   const [form, setForm] = useState({
@@ -191,12 +197,32 @@ export default function AppointmentsPage() {
     void loadAppointments();
   }
 
-  function openCheckout(appt: Appointment) {
-    setCheckoutAppt({
+  function openPaymentLink(appt: Appointment) {
+    setPaymentLinkAppt({
       id: appt._id,
       clientName: clientName(appt),
+      clientPhone: appt.clientId?.phone || "",
       serviceName: appt.serviceName,
+      amount: appt.finalPrice ?? 0,
     });
+  }
+
+  async function markComplete(appt: Appointment) {
+    const res = await fetch(`/api/appointments/${appt._id}/mark-complete`, { method: "POST" });
+    if (!res.ok) {
+      const d = await res.json();
+      alert(d.error || t("common.error"));
+      return;
+    }
+    void loadAppointments();
+  }
+
+  function handleAppointmentAction(appt: Appointment) {
+    if (appt.paymentStatus === "paid") {
+      void markComplete(appt);
+      return;
+    }
+    openPaymentLink(appt);
   }
 
   function appointmentsForDay(day: Date) {
@@ -217,7 +243,12 @@ export default function AppointmentsPage() {
   }
 
   if (loading) {
-    return <p className="text-gray-500">{t("common.loading")}</p>;
+    return (
+      <div className="animate-pulse space-y-6" aria-busy="true">
+        <div className="h-10 w-48 rounded-lg bg-brand-100" />
+        <div className="h-64 rounded-2xl bg-brand-50" />
+      </div>
+    );
   }
 
   if (loadError) {
@@ -233,13 +264,15 @@ export default function AppointmentsPage() {
 
   return (
     <div>
-      <PaymentCheckoutModal
-        open={!!checkoutAppt}
-        appointmentId={checkoutAppt?.id || ""}
-        clientName={checkoutAppt?.clientName || ""}
-        defaultServiceName={checkoutAppt?.serviceName}
-        onClose={() => setCheckoutAppt(null)}
-        onComplete={() => void loadAppointments()}
+      <SendPaymentLinkModal
+        open={!!paymentLinkAppt}
+        appointmentId={paymentLinkAppt?.id || ""}
+        clientName={paymentLinkAppt?.clientName || ""}
+        clientPhone={paymentLinkAppt?.clientPhone || ""}
+        businessName={user.businessName || "ReGlow"}
+        serviceName={paymentLinkAppt?.serviceName}
+        amount={paymentLinkAppt?.amount}
+        onClose={() => setPaymentLinkAppt(null)}
       />
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
@@ -402,7 +435,7 @@ export default function AppointmentsPage() {
                     setViewMode("week");
                     setWeekStart(startOfWeek(day, { weekStartsOn: 0 }));
                   }}
-                  className={`min-h-[72px] rounded-lg p-1 text-left text-xs transition ${
+                  className={`min-h-[88px] rounded-lg p-1 text-left text-xs transition ${
                     !inMonth
                       ? "bg-gray-50/50 text-gray-300"
                       : isToday(day)
@@ -412,9 +445,23 @@ export default function AppointmentsPage() {
                 >
                   <span className="font-medium">{format(day, "d")}</span>
                   {dayAppts.length > 0 && (
-                    <span className="mt-1 block truncate rounded bg-brand-500 px-1 text-[10px] text-white">
-                      {dayAppts.length}
-                    </span>
+                    <div className="mt-1 space-y-0.5">
+                      {dayAppts.slice(0, 2).map((appt) => (
+                        <div
+                          key={appt._id}
+                          className="truncate rounded bg-brand-500/90 px-1 py-0.5 text-[9px] leading-tight text-white"
+                          title={`${appt.clientId?.name ?? ""} ${format(new Date(appt.date), "HH:mm")}`}
+                        >
+                          <span className="font-medium">{appt.clientId?.name ?? "—"}</span>{" "}
+                          {format(new Date(appt.date), "HH:mm")}
+                        </div>
+                      ))}
+                      {dayAppts.length > 2 && (
+                        <span className="block text-[9px] font-semibold text-brand-600">
+                          {t("appointments.monthMore").replace("{count}", String(dayAppts.length - 2))}
+                        </span>
+                      )}
+                    </div>
                   )}
                 </button>
               );
@@ -432,6 +479,22 @@ export default function AppointmentsPage() {
               </p>
               <p className="text-lg font-bold">{format(day, "d")}</p>
               <div className="mt-2 space-y-1">
+                {appointmentsForDay(day).length === 0 && (
+                  <div className="rounded-lg border border-dashed border-brand-200 bg-brand-50/50 p-2 text-center">
+                    <p className="text-[10px] font-semibold text-gray-700">
+                      {t("appointments.dayEmptyTitle")}
+                    </p>
+                    <p className="mt-0.5 text-[9px] text-gray-500">{t("appointments.dayEmptyDesc")}</p>
+                    {hasLostAccess && (
+                      <Link
+                        href="/recover-clients"
+                        className="mt-2 block text-[9px] font-bold text-brand-600 hover:underline"
+                      >
+                        {t("appointments.dayEmptyCta")}
+                      </Link>
+                    )}
+                  </div>
+                )}
                 {appointmentsForDay(day).map((appt) => (
                   <div
                     key={appt._id}
@@ -449,10 +512,12 @@ export default function AppointmentsPage() {
                       <div className="mt-1 flex gap-1">
                         <button
                           type="button"
-                          className="text-[10px] underline"
-                          onClick={() => openCheckout(appt)}
+                          className="text-[10px] font-medium underline"
+                          onClick={() => handleAppointmentAction(appt)}
                         >
-                          {t("appointments.done")}
+                          {appt.paymentStatus === "paid"
+                            ? t("appointments.markDone")
+                            : t("appointments.sendPaymentLink")}
                         </button>
                         <button
                           type="button"
